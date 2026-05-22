@@ -84,42 +84,63 @@ const LEADERBOARD_KEY = 'flappyLeaderboardV1';
 const LEADERBOARD_MAX = 10;
 
 export function getLeaderboard() {
+  let entries = [];
   try {
     const raw = localStorage.getItem(LEADERBOARD_KEY);
     if (raw) {
       const data = JSON.parse(raw);
-      if (Array.isArray(data.entries)) return data.entries;
+      if (Array.isArray(data.entries)) entries = data.entries;
     }
   } catch (e) {
     // ignore parse errors
   }
   // Migrate from legacy single-score record
-  const legacy = localStorage.getItem('flappyHighScoreObj');
-  if (legacy) {
-    try {
-      const d = JSON.parse(legacy);
-      if (d && d.score) {
-        return [{ name: d.name || 'ANON', score: d.score, ts: Date.now() }];
-      }
-    } catch (e) {}
+  if (entries.length === 0) {
+    const legacy = localStorage.getItem('flappyHighScoreObj');
+    if (legacy) {
+      try {
+        const d = JSON.parse(legacy);
+        if (d && d.score) {
+          entries = [{ name: d.name || 'ANON', score: d.score, ts: Date.now() }];
+        }
+      } catch (e) {}
+    }
   }
-  return [];
+  // Dedupe by name (keep highest score) for users who already have polluted
+  // data from the previous version that pushed every run.
+  const byName = new Map();
+  entries.forEach((e) => {
+    const key = (e.name || 'ANON').toUpperCase();
+    const prev = byName.get(key);
+    if (!prev || e.score > prev.score) {
+      byName.set(key, { name: key, score: e.score | 0, ts: e.ts || Date.now() });
+    }
+  });
+  return Array.from(byName.values()).sort((a, b) => b.score - a.score || a.ts - b.ts);
 }
 
 export function submitScore(name, score) {
+  const cleanName = (name || 'ANON').slice(0, 10).toUpperCase();
+  const cleanScore = score | 0;
   const entries = getLeaderboard();
-  entries.push({
-    name: (name || 'ANON').slice(0, 10).toUpperCase(),
-    score: score | 0,
-    ts: Date.now()
-  });
+  
+  // Dedupe by player name: keep only the highest score per pilot.
+  // Same player playing many times should refresh their entry, not
+  // pollute the leaderboard.
+  const existingIdx = entries.findIndex((e) => e.name === cleanName);
+  if (existingIdx >= 0) {
+    if (cleanScore > entries[existingIdx].score) {
+      entries[existingIdx] = { name: cleanName, score: cleanScore, ts: Date.now() };
+    }
+  } else {
+    entries.push({ name: cleanName, score: cleanScore, ts: Date.now() });
+  }
+  
   entries.sort((a, b) => b.score - a.score || a.ts - b.ts);
   const trimmed = entries.slice(0, LEADERBOARD_MAX);
   localStorage.setItem(LEADERBOARD_KEY, JSON.stringify({ entries: trimmed }));
-  // Find rank of the just-added entry (1-based, -1 if not in top 10)
-  const rank = trimmed.findIndex(
-    (e) => e.name === (name || 'ANON').slice(0, 10).toUpperCase() && e.score === (score | 0)
-  );
+  
+  const rank = trimmed.findIndex((e) => e.name === cleanName);
   return { entries: trimmed, rank: rank === -1 ? -1 : rank + 1 };
 }
 
@@ -417,11 +438,11 @@ export class FlappyBird {
     let targetRotation = Math.min(Math.PI / 2, Math.max(-Math.PI / 9, (this.bird.velocity * 0.1) * Math.PI / 180));
     this.bird.rotation = targetRotation;
 
-    // Floor & Ceiling collision: instant game over (no respawn from floor)
+    // Floor & Ceiling collision: costs one life like a pipe hit
     const floorY = this.canvas.height - 112; // base height is 112
     if (this.bird.y + this.bird.radius > floorY || this.bird.y - this.bird.radius < 0) {
-      this.triggerGameOver();
-      return;
+      if (!this.takeDamage()) return;
+      // takeDamage repositioned the bird to mid-air; carry on
     }
 
     // Generate pipes based on time and speed
