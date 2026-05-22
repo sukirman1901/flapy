@@ -114,9 +114,11 @@ function finishCalibration(useDefaults) {
     // Use median sample as the pinch baseline (robust to outliers)
     const sorted = [...calibration.samples].sort((a, b) => a - b);
     const median = sorted[Math.floor(sorted.length / 2)];
-    // Pinch fires anything <= median * 1.4, release at * 1.9 (hysteresis)
-    pinchThreshold = Math.max(0.02, median * 1.4);
-    releaseThreshold = pinchThreshold * 1.35;
+    // Threshold = median * 2.5 with a floor at the default. Players rarely
+    // pinch as tight in-game as during a deliberate calibration hold, so we
+    // need a generous buffer or flapping feels impossible.
+    pinchThreshold = Math.max(DEFAULT_PINCH, median * 2.5);
+    releaseThreshold = pinchThreshold * 1.4;
   } else {
     pinchThreshold = DEFAULT_PINCH;
     releaseThreshold = DEFAULT_RELEASE;
