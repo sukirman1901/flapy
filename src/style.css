@@ -309,6 +309,14 @@ button:active {
   box-shadow: 0 0px 0px #9a3412;
 }
 
+/* Skip VR button: width matches the camera select dropdown */
+.skip-vr-btn {
+  width: 220px;
+  font-size: 0.85rem;
+  padding: 1rem 0.5rem;
+  text-align: center;
+}
+
 .blink {
   animation: blinker 1s linear infinite;
 }
