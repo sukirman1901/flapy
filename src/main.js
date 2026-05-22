@@ -23,7 +23,8 @@ window.playerName = "";
 
 // Pinch thresholds (slightly more forgiving than the original 0.05/0.065)
 const DEFAULT_PINCH = 0.07;
-const DEFAULT_RELEASE = 0.09;
+const DEFAULT_RELEASE = 0.08;  // Small hysteresis gap so fast taps register cleanly
+const PINCH_DEBOUNCE_MS = 120; // Max ~8 pinches/sec for late-game speed
 let pinchThreshold = DEFAULT_PINCH;
 let releaseThreshold = DEFAULT_RELEASE;
 let calibrationDone = true; // calibration removed; flag kept for routing
@@ -327,7 +328,7 @@ async function predictWebcam() {
       window.lastPinchTime = window.lastPinchTime || 0;
       
       if (pinchDist < pinchThreshold) {
-        if (!isPinching && (now - window.lastPinchTime > 300)) {
+        if (!isPinching && (now - window.lastPinchTime > PINCH_DEBOUNCE_MS)) {
           isPinching = true;
           window.lastPinchTime = now;
           if (vrCursor) vrCursor.classList.add('pinching');
