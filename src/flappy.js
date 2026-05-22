@@ -564,7 +564,7 @@ export class FlappyBird {
         if (this.streak > this.streakBest) this.streakBest = this.streak;
         if (this.streak === 5 || this.streak === 10 || (this.streak > 10 && this.streak % 10 === 0)) {
           this.streakToast = {
-            text: `STREAK x${this.streak}!`,
+            count: this.streak,
             ttl: 1.4 // seconds visible
           };
         }
@@ -874,23 +874,60 @@ export class FlappyBird {
     });
     this.ctx.globalAlpha = 1;
     
-    // Draw streak toast (centred, fades + drifts up)
+    // Draw streak toast: pixel-art "STREAK x" word + sprite digits.
+    // Drift up + fade for that classic arcade feel.
     if (this.streakToast) {
       const t = this.streakToast.ttl / 1.4;
       const alpha = t > 0.7 ? (1 - t) / 0.3 : Math.min(1, t / 0.3);
       const lift = (1 - t) * 30;
+      const cx = this.canvas.width / 2;
+      const cy = this.canvas.height / 2 - 60 - lift;
+      
       this.ctx.save();
       this.ctx.globalAlpha = alpha;
+      
+      // Word "STREAK" in chunky pixel style via Press Start 2P, sized to
+      // match the sprite digits beside it.
+      const wordSize = 28;
+      this.ctx.font = `${wordSize}px "Press Start 2P", monospace`;
+      this.ctx.textAlign = 'left';
+      this.ctx.textBaseline = 'middle';
+      this.ctx.imageSmoothingEnabled = false;
+      const word = 'STREAK ';
+      const wordW = this.ctx.measureText(word).width;
+      
+      // Compute total width: word + sprite-digit count * scaled width
+      const digitStr = String(this.streak);
+      const digitScale = 1.0; // sprite native is 24x36; scale to match word height
+      const digitW = 24 * digitScale;
+      const digitH = 36 * digitScale;
+      const totalW = wordW + digitStr.length * digitW;
+      const startX = cx - totalW / 2;
+      
+      // Draw word with chunky outline
       this.ctx.fillStyle = '#ea580c';
       this.ctx.strokeStyle = '#fff';
       this.ctx.lineWidth = 6;
-      this.ctx.font = 'bold 36px "Press Start 2P", monospace';
-      this.ctx.textAlign = 'center';
-      this.ctx.textBaseline = 'middle';
-      const cx = this.canvas.width / 2;
-      const cy = this.canvas.height / 2 - 60 - lift;
-      this.ctx.strokeText(this.streakToast.text, cx, cy);
-      this.ctx.fillText(this.streakToast.text, cx, cy);
+      this.ctx.lineJoin = 'round';
+      this.ctx.strokeText(word, startX, cy);
+      this.ctx.fillText(word, startX, cy);
+      
+      // Draw sprite digits next to the word (vertically centred)
+      const digitY = cy - digitH / 2;
+      for (let i = 0; i < digitStr.length; i++) {
+        const d = parseInt(digitStr[i]);
+        const img = this.numImgs[d];
+        if (img && img.complete && img.naturalWidth !== 0) {
+          this.ctx.drawImage(
+            img,
+            startX + wordW + i * digitW,
+            digitY,
+            digitW,
+            digitH
+          );
+        }
+      }
+      
       this.ctx.restore();
     }
   }
