@@ -346,7 +346,7 @@ export class FlappyBird {
     }
     this.bird.velocity = 0;
     this.bird.rotation = 0;
-    this.invulnTimer = 1.0; // shorter so it doesn't feel like a bug
+    this.invulnTimer = 1.5; // gives the player time to register the respawn
     // Clear any pipe whose centre is within the safe-zone of the bird so
     // the player has clear airspace to recover.
     this.pipes = this.pipes.filter((p) => {
