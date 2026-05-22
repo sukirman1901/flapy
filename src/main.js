@@ -261,8 +261,18 @@ async function getCameras() {
       console.warn("Could not get initial camera permission (maybe broken camera). Will enumerate devices anyway.", e);
     }
 
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(device => device.kind === 'videoinput');
+    let devices = await navigator.mediaDevices.enumerateDevices();
+    let videoDevices = devices.filter(device => device.kind === 'videoinput');
+    
+    // Chrome quirk: enumerateDevices may return only the default camera
+    // until each individual camera has been actively used. If we got just
+    // one device but the system likely has more, try again after a tiny
+    // delay (the browser may finish reading the device list).
+    if (videoDevices.length <= 1) {
+      await new Promise((r) => setTimeout(r, 250));
+      devices = await navigator.mediaDevices.enumerateDevices();
+      videoDevices = devices.filter(device => device.kind === 'videoinput');
+    }
     
     cameraSelect.innerHTML = '';
     if (videoDevices.length === 0) {
@@ -282,6 +292,14 @@ async function getCameras() {
     console.error("Error fetching cameras", err);
     cameraSelect.innerHTML = '<option value="">Error finding cameras</option>';
   }
+}
+
+// Re-enumerate when devices change (e.g., user plugs in a new camera or
+// grants permission to one that was previously hidden by Chrome).
+if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+  navigator.mediaDevices.addEventListener('devicechange', () => {
+    getCameras();
+  });
 }
 
 if (hasGetUserMedia()) {
