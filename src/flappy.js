@@ -333,22 +333,22 @@ export class FlappyBird {
       return false;
     }
     
-    // Respawn: place the bird at the centre of the next upcoming pipe gap
-    // (not just canvas middle, which often spawns into a wall).
-    const lookahead = this.pipes
-      .filter((p) => p.x + this.pipeWidth > this.bird.x)
+    // Respawn aim point: pick the first pipe BEYOND the safe-zone so we
+    // don't aim at the pipe we just hit (which is about to be cleared).
+    const safeZone = 280;
+    const aimPipe = this.pipes
+      .filter((p) => p.x + this.pipeWidth / 2 > this.bird.x + safeZone)
       .sort((a, b) => a.x - b.x)[0];
-    if (lookahead) {
-      this.bird.y = (lookahead.topHeight + lookahead.bottomY) / 2;
+    if (aimPipe) {
+      this.bird.y = (aimPipe.topHeight + aimPipe.bottomY) / 2;
     } else {
       this.bird.y = this.canvas.height / 2;
     }
     this.bird.velocity = 0;
     this.bird.rotation = 0;
-    this.invulnTimer = 1.5;
-    // Clear pipes that are too close to the respawn point so the player
-    // has time to recover and aim for the next gap.
-    const safeZone = 280;
+    this.invulnTimer = 1.0; // shorter so it doesn't feel like a bug
+    // Clear any pipe whose centre is within the safe-zone of the bird so
+    // the player has clear airspace to recover.
     this.pipes = this.pipes.filter((p) => {
       const center = p.x + this.pipeWidth / 2;
       return Math.abs(center - this.bird.x) > safeZone;
