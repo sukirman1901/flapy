@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hand Tracking App</title>
+  </head>
+  <body>
+    <div class="video-container">
+      <video id="webcam" style="position: absolute; opacity: 0; width: 1px; height: 1px;" autoplay playsinline muted></video>
+      <div class="camera-skeleton"></div>
+      <canvas class="output_canvas" id="output_canvas"></canvas>
+      
+      <!-- OS UI Screens -->
+      <div id="loading-screen" class="retro-screen">
+        <img src="https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master/sprites/yellowbird-midflap.png" alt="Loading Bird" class="loading-bird pixel-art">
+        <p class="retro-text blink">CONNECTING TO VR CAMERA...</p>
+        <button id="skip-vr-btn" class="retro-button" style="margin-top: 2rem;">SKIP VR (PLAY WITH MOUSE)</button>
+      </div>
+      
+      <div id="login-screen" class="retro-screen hidden">
+        <h2 class="retro-title">ENTER PILOT NAME</h2>
+        <div id="name-display" class="retro-input"></div>
+        <div id="vr-keyboard" class="keyboard-container">
+          <!-- Keyboard keys will be injected here by JS -->
+        </div>
+      </div>
+      
+      <div id="game-ui-container" class="game-ui hidden">
+        <div id="game-start">
+          <img src="https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master/sprites/message.png" alt="Get Ready!" class="pixel-art">
+          <p class="instruction">Cubit jarimu untuk terbang!</p>
+        </div>
+        <div id="game-over" class="hidden">
+          <img src="https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master/sprites/gameover.png" alt="Game Over" class="pixel-art">
+          
+          <div class="score-panel">
+            <div class="medal-container">
+              <span class="panel-label">MEDAL</span>
+              <div id="medal-icon" style="display: none; font-size: 3rem; text-shadow: 0 4px 6px rgba(0,0,0,0.3);"></div>
+            </div>
+            <div class="score-details">
+              <div class="score-row">
+                <span class="panel-label">SCORE</span>
+                <span id="final-score" class="panel-number">0</span>
+              </div>
+              <div class="score-row">
+                <span class="panel-label">BEST</span>
+                <span id="best-score" class="panel-number">0</span>
+              </div>
+            </div>
+          </div>
+          
+          <p class="instruction">Cubit jarimu untuk main lagi!</p>
+        </div>
+      </div>
+      
+      <!-- Flappy Bird Game Canvas -->
+      <canvas id="gameCanvas" class="hidden" width="800" height="600"></canvas>
+
+      <div class="glass-panel floating-controls">
+        <select id="cameraSelect" class="camera-select skeleton" disabled>
+          <option value="">Loading cameras...</option>
+        </select>
+        <button id="webcamButton" class="mdc-button mdc-button--raised skeleton">
+          <span class="mdc-button__ripple"></span>
+          <span class="mdc-button__label">Loading...</span>
+        </button>
+      </div>
+      <div id="vr-cursor"></div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

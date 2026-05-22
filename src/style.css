@@ -1,0 +1,564 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+:root {
+  --bg-dark: #000;
+  --glass-bg: rgba(15, 23, 42, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --accent-cyan: #06b6d4;
+  --accent-glow: 0 0 20px rgba(6, 182, 212, 0.5);
+  --text-primary: #f8fafc;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.video-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #000;
+  overflow: hidden;
+}
+
+.output_canvas {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  object-fit: cover;
+  transform: scaleX(-1); /* Mirror effect */
+  border: 4px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  z-index: 50;
+  pointer-events: none; /* Let clicks pass through */
+}
+
+/* Add a cool skeleton loading animation when waiting for webcam */
+.camera-skeleton {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.05) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  z-index: 5;
+  display: none; /* hidden by default */
+}
+
+/* Hide the text when canvas is active */
+.output_canvas.active {
+  z-index: 10;
+}
+
+#fireflies-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 15;
+  overflow: hidden;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; scale: 0.8; }
+  50% { opacity: 1; scale: 1.2; }
+}
+
+.firefly {
+  position: absolute;
+  border-radius: 50%;
+  animation: twinkle 2s infinite ease-in-out;
+  will-change: transform, opacity;
+  /* Size and color will be injected via JS */
+}
+
+/* Floating Clean Pill Controls */
+.floating-controls {
+  position: absolute;
+  bottom: 3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50; /* Above retro screens */
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  transition: transform 0.3s ease;
+}
+
+.camera-select {
+  background: transparent;
+  border: none;
+  color: #0f172a;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  padding: 0.5rem 2.5rem 0.5rem 0.5rem;
+  min-width: 220px;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230f172a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.8rem center;
+  background-size: 1.2em;
+}
+
+.camera-select option {
+  background: #1e1e1e;
+  color: #f8fafc;
+}
+
+button {
+  background: rgba(255, 255, 255, 0.25);
+  color: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 0.6rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+button:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+button:active {
+  background: rgba(255, 255, 255, 0.12);
+  transform: scale(0.98);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .floating-controls {
+    width: 90%;
+    flex-direction: column;
+    border-radius: 16px;
+    padding: 1rem;
+    gap: 1rem;
+    bottom: 2rem;
+  }
+  .camera-select {
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+  }
+  button {
+    width: 100%;
+  }
+  
+  .output_canvas {
+    width: 90px;
+    height: 90px;
+    top: 1rem;
+    right: 1rem;
+    border-width: 3px;
+  }
+  
+  .score-panel {
+    width: 280px;
+    padding: 1rem;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .score-details {
+    align-items: center;
+  }
+  
+  #game-over .pixel-art {
+    width: 220px;
+  }
+}
+
+/* Game UI */
+#gameCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 10;
+  pointer-events: none; /* Let clicks pass through if needed */
+  background-image: url('https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master/sprites/background-day.png');
+  background-size: cover;
+  background-position: center bottom;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-crisp-edges;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.game-ui {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 50;
+  text-align: center;
+  pointer-events: none;
+}
+
+.score-board {
+  position: fixed;
+  top: 1.5rem;
+  left: 1.5rem;
+  z-index: 50;
+  background: #ded895;
+  border: 4px solid #543847;
+  border-radius: 4px;
+  padding: 0.5rem 1.5rem;
+  box-shadow: inset -4px -4px 0px rgba(0,0,0,0.2), 0 8px 32px rgba(0,0,0,0.3);
+  text-align: center;
+}
+
+.score-label {
+  color: #ea580c;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  font-family: 'Press Start 2P', monospace;
+}
+
+#score {
+  color: #fff;
+  font-size: 2.5rem;
+  font-weight: 900;
+  margin: 0;
+  text-shadow: 2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.retro-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 40; /* Below score board, above canvas */
+  pointer-events: auto; /* Catch clicks */
+}
+
+.retro-title {
+  color: #fff;
+  font-size: 2rem;
+  font-family: 'Press Start 2P', monospace;
+  text-shadow: 4px 4px 0px #000;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.retro-text {
+  color: #fff;
+  font-size: 1.2rem;
+  font-family: 'Press Start 2P', monospace;
+  text-shadow: 2px 2px 0px #000;
+}
+
+.retro-button {
+  background: #ea580c;
+  color: #fff;
+  border: 4px solid #fff;
+  padding: 1rem 2rem;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 4px 0px #9a3412;
+  transition: transform 0.1s;
+}
+
+.retro-button:hover {
+  background: #f97316;
+}
+
+.retro-button:active {
+  transform: translateY(4px);
+  box-shadow: 0 0px 0px #9a3412;
+}
+
+.blink {
+  animation: blinker 1s linear infinite;
+}
+
+@keyframes blinker {
+  50% { opacity: 0; }
+}
+
+.loading-bird {
+  width: 100px;
+  animation: float 1s ease-in-out infinite;
+  margin-bottom: 2rem;
+}
+
+.retro-input {
+  width: 80%;
+  max-width: 400px;
+  height: 60px;
+  background: #ded895;
+  border: 4px solid #543847;
+  box-shadow: inset -4px -4px 0px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 2rem;
+  color: #ea580c;
+  margin-bottom: 3rem;
+}
+
+.keyboard-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.keyboard-row {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.vr-key {
+  width: 50px;
+  height: 50px;
+  background: #f8fafc;
+  border: 3px solid #543847;
+  border-radius: 4px;
+  box-shadow: 0 6px 0px #94a3b8, 0 8px 10px rgba(0,0,0,0.3);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 1.2rem;
+  color: #0f172a;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  transition: all 0.1s;
+}
+
+.vr-key:hover, .vr-key.hovered {
+  background: #e2e8f0;
+  transform: translateY(2px);
+  box-shadow: 0 4px 0px #94a3b8, 0 6px 8px rgba(0,0,0,0.3);
+}
+
+.vr-key:active, .vr-key.pressed {
+  transform: translateY(6px);
+  box-shadow: 0 0px 0px #94a3b8, 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.vr-key.key-wide {
+  width: 110px;
+  background: #ea580c;
+  color: white;
+  box-shadow: 0 6px 0px #9a3412, 0 8px 10px rgba(0,0,0,0.3);
+}
+
+.vr-key.key-wide:hover, .vr-key.key-wide.hovered {
+  background: #f97316;
+  box-shadow: 0 4px 0px #9a3412, 0 6px 8px rgba(0,0,0,0.3);
+}
+
+.vr-key.key-wide:active, .vr-key.key-wide.pressed {
+  box-shadow: 0 0px 0px #9a3412, 0 2px 4px rgba(0,0,0,0.3);
+}
+
+#game-start,
+#game-over {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s;
+}
+
+.pixel-art {
+  width: 280px;
+  height: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  margin-bottom: 1.5rem;
+  filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5));
+  animation: float 2.5s ease-in-out infinite;
+}
+
+#game-over .pixel-art {
+  width: 260px;
+  animation: none;
+  margin-bottom: 1rem;
+}
+
+.score-panel {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  background: #ded895; /* Flappy Bird retro beige */
+  border: 4px solid #543847; /* Dark retro border */
+  border-radius: 4px;
+  padding: 1.2rem 1.8rem;
+  margin-bottom: 1rem;
+  width: 300px;
+  box-shadow: inset -4px -4px 0px rgba(0,0,0,0.15), 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.medal-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+}
+
+#medal-img {
+  width: 60px;
+  height: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+}
+
+.score-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.score-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.panel-label {
+  color: #ea580c;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  display: block;
+  margin-bottom: 0.5rem;
+  font-family: 'Press Start 2P', monospace;
+  text-shadow: 2px 2px 0px #fff;
+}
+
+.panel-number {
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 800;
+  font-family: 'Press Start 2P', monospace;
+  text-shadow: 2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000;
+}
+
+.instruction {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 0.8rem 2rem;
+  border-radius: 16px;
+  color: #0f172a;
+  font-weight: 800;
+  letter-spacing: 1px;
+  font-size: 1.1rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-15px); }
+  100% { transform: translateY(0px); }
+}
+
+#game-start p,
+#game-over p {
+  margin: 0;
+  font-size: 1.2rem;
+  opacity: 0.9;
+}
+
+.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Skeleton Loading Animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  color: transparent !important;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.05) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: 9999px;
+  pointer-events: none;
+  border: none !important;
+}
+
+.skeleton::placeholder,
+.skeleton * {
+  visibility: hidden;
+}
+
+/* VR Spatial Cursor */
+#vr-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 3px solid #06b6d4;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none; /* VERY IMPORTANT: Let clicks pass through */
+  z-index: 9999;
+  display: none;
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.8);
+  transition: width 0.1s, height 0.1s, background-color 0.1s;
+}
+
+#vr-cursor.pinching {
+  width: 16px;
+  height: 16px;
+  background: #ea580c;
+  border-color: #ffffff;
+  box-shadow: 0 0 20px rgba(234, 88, 12, 1);
+}
