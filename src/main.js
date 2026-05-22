@@ -21,12 +21,12 @@ let vrCursor = null;
 // Player Identity
 window.playerName = "";
 
-// Pinch calibration (defaults overwritten after calibration)
-const DEFAULT_PINCH = 0.05;
-const DEFAULT_RELEASE = 0.065;
+// Pinch thresholds (slightly more forgiving than the original 0.05/0.065)
+const DEFAULT_PINCH = 0.07;
+const DEFAULT_RELEASE = 0.09;
 let pinchThreshold = DEFAULT_PINCH;
 let releaseThreshold = DEFAULT_RELEASE;
-let calibrationDone = false;
+let calibrationDone = true; // calibration removed; flag kept for routing
 
 // Auto-pause tracking
 let lastHandSeenAt = performance.now();
@@ -88,77 +88,12 @@ function handleVirtualKeyClick(key) {
   nameDisplay.innerText = window.playerName + (Math.floor(Date.now() / 500) % 2 === 0 ? '_' : '');
 }
 
-// === Pinch Calibration ===
-// Captures the user's natural pinch distance over a 2 second hold
-// and derives thresholds with a comfortable buffer.
-const calibration = {
-  active: false,
-  startedAt: 0,
-  samples: [],
-  HOLD_MS: 2000
-};
-
-function beginCalibration() {
-  document.getElementById('login-screen').classList.add('hidden');
-  document.getElementById('calibration-screen').classList.remove('hidden');
-  calibration.active = true;
-  calibration.startedAt = 0;
-  calibration.samples = [];
-}
-
-function finishCalibration(useDefaults) {
-  calibration.active = false;
-  calibrationDone = true;
-  
-  if (!useDefaults && calibration.samples.length > 5) {
-    // Use median sample as the pinch baseline (robust to outliers)
-    const sorted = [...calibration.samples].sort((a, b) => a - b);
-    const median = sorted[Math.floor(sorted.length / 2)];
-    // Threshold = median * 2.5 with a floor at the default. Players rarely
-    // pinch as tight in-game as during a deliberate calibration hold, so we
-    // need a generous buffer or flapping feels impossible.
-    pinchThreshold = Math.max(DEFAULT_PINCH, median * 2.5);
-    releaseThreshold = pinchThreshold * 1.4;
-  } else {
-    pinchThreshold = DEFAULT_PINCH;
-    releaseThreshold = DEFAULT_RELEASE;
-  }
-  
-  document.getElementById('calibration-screen').classList.add('hidden');
-  document.getElementById('login-screen').classList.remove('hidden');
-}
-
-function updateCalibration(pinchDist) {
-  if (!calibration.active) return;
-  
-  const bar = document.getElementById('calibration-bar');
-  const instr = document.getElementById('calibration-instruction');
-  
-  // Pinch is considered "holding" if distance is below a generous default
-  const HOLDING = pinchDist < 0.08;
-  
-  if (HOLDING) {
-    if (calibration.startedAt === 0) {
-      calibration.startedAt = performance.now();
-      calibration.samples = [];
-    }
-    calibration.samples.push(pinchDist);
-    
-    const elapsed = performance.now() - calibration.startedAt;
-    const pct = Math.min(100, (elapsed / calibration.HOLD_MS) * 100);
-    if (bar) bar.style.width = pct + '%';
-    if (instr) instr.innerHTML = 'HOLD STEADY...<br>' + Math.ceil((calibration.HOLD_MS - elapsed) / 1000) + 's';
-    
-    if (elapsed >= calibration.HOLD_MS) {
-      finishCalibration(false);
-    }
-  } else {
-    // Reset progress if user releases too early
-    calibration.startedAt = 0;
-    if (bar) bar.style.width = '0%';
-    if (instr) instr.innerHTML = 'PINCH THUMB &amp; INDEX<br>HOLD FOR 2 SECONDS';
-  }
-}
+// === Pinch Calibration removed ===
+// Calibration ended up making the game harder because users pinch tighter
+// during a deliberate hold than during gameplay. We now use a fixed,
+// forgiving threshold and expose a live debug HUD so the player can see
+// exactly how close their pinch is to triggering.
+const calibration = { active: false }; // stub kept so existing checks still pass
 
 // Blinking cursor loop for name display
 setInterval(() => {
@@ -339,23 +274,12 @@ async function predictWebcam() {
     const loadingScreen = document.getElementById('loading-screen');
     if (loadingScreen) loadingScreen.classList.add('hidden');
     
-    // First-time entry: route to calibration before login
-    const calibrationScreen = document.getElementById('calibration-screen');
+    // First-time entry: route directly to login (calibration removed)
     const loginScreen = document.getElementById('login-screen');
     const gameCanvas = document.getElementById('gameCanvas');
     if (
       gameCanvas.classList.contains('hidden') &&
-      loginScreen.classList.contains('hidden') &&
-      calibrationScreen.classList.contains('hidden') &&
-      !calibrationDone
-    ) {
-      // Kick off calibration flow
-      beginCalibration();
-    } else if (
-      gameCanvas.classList.contains('hidden') &&
-      loginScreen.classList.contains('hidden') &&
-      calibrationScreen.classList.contains('hidden') &&
-      calibrationDone
+      loginScreen.classList.contains('hidden')
     ) {
       loginScreen.classList.remove('hidden');
     }
@@ -379,9 +303,12 @@ async function predictWebcam() {
         (thumbTip.z || 0) - (indexTip.z || 0)
       );
       
-      // Feed calibration if it's running
-      if (calibration.active) {
-        updateCalibration(pinchDist);
+      // Live debug HUD — shows pinch distance vs threshold
+      const hud = document.getElementById('pinch-hud');
+      if (hud) {
+        const close = pinchDist < pinchThreshold;
+        hud.textContent = `PINCH: ${pinchDist.toFixed(3)} / ${pinchThreshold.toFixed(3)}`;
+        hud.style.color = close ? '#22c55e' : '#f8fafc';
       }
       
       // VR Spatial Cursor Mapping
@@ -411,9 +338,8 @@ async function predictWebcam() {
           if (elementToClick && (elementToClick.tagName === 'BUTTON' || elementToClick.tagName === 'SELECT' || elementToClick.classList.contains('vr-key'))) {
             // Click HTML buttons (like the Keyboard or Skip VR)
             elementToClick.click();
-          } else if (!calibration.active) {
+          } else {
             // Otherwise, anywhere else acts as a screen tap for the game
-            // (suppress flap input while calibrating)
             if (flappyGame) flappyGame.flap();
           }
         }
@@ -486,20 +412,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const skipBtn = document.getElementById('skip-vr-btn');
   if (skipBtn) {
     skipBtn.addEventListener('click', () => {
-      // Hide loading screen, skip calibration, go to login
+      // Hide loading screen, go to login
       document.getElementById('loading-screen').classList.add('hidden');
-      calibrationDone = true;
       document.getElementById('login-screen').classList.remove('hidden');
       // Stop camera attempt if any
       if (typeof stopCamera === 'function') stopCamera();
-    });
-  }
-  
-  // Skip Calibration Button: use defaults
-  const skipCalBtn = document.getElementById('skip-calibration-btn');
-  if (skipCalBtn) {
-    skipCalBtn.addEventListener('click', () => {
-      finishCalibration(true);
     });
   }
 });
