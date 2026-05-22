@@ -89,6 +89,19 @@ function handleVirtualKeyClick(key) {
 }
 
 function startGame() {
+  // Block start until preloaded assets are ready, otherwise FlappyBird
+  // would crash trying to read assets.images.base from null.
+  if (!gameAssets) {
+    const display = document.getElementById('name-display');
+    if (display) {
+      display.innerText = 'LOADING...';
+      setTimeout(() => {
+        display.innerText = window.playerName + (Math.floor(Date.now() / 500) % 2 === 0 ? '_' : '');
+      }, 1200);
+    }
+    return;
+  }
+  
   document.getElementById('login-screen').classList.add('hidden');
   
   const gameCanvas = document.getElementById('gameCanvas');

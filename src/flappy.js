@@ -465,7 +465,9 @@ export class FlappyBird {
     const floorY = this.canvas.height - 112; // base height is 112
     if (this.bird.y + this.bird.radius > floorY || this.bird.y - this.bird.radius < 0) {
       if (!this.takeDamage()) return;
-      // takeDamage repositioned the bird to mid-air; carry on
+      // takeDamage repositioned the bird mid-air; skip the rest of this
+      // frame so the new position is committed before pipe checks run.
+      return;
     }
 
     // Generate pipes based on time and speed
@@ -510,6 +512,10 @@ export class FlappyBird {
       
       if (hitTop || hitBottom) {
         if (!this.takeDamage()) return;
+        // takeDamage replaced this.pipes (filtered nearby pipes) and granted
+        // invulnerability. Stop iterating the now-stale array; next frame
+        // resumes cleanly with the new pipes list.
+        break;
       }
 
       // Score update
