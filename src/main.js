@@ -392,9 +392,25 @@ async function predictWebcam() {
 }
 
 // Universal Input (Mobile Touch, Mouse Click, Spacebar)
+// Single shared cooldown so mobile's synthetic mousedown after touchstart
+// doesn't double-flap.
+let lastInputAt = 0;
+const INPUT_COOLDOWN_MS = 80;
+
 function handleInput(e) {
   if (e.type === 'keydown' && e.code !== 'Space') return;
   if (e.type === 'keydown') e.preventDefault(); // Prevent scrolling
+  
+  // If the touch/click landed on an interactive UI element, let it handle
+  // itself. Prevents flap-on-button-tap when playing without VR.
+  const target = e.target;
+  if (target && target.closest && target.closest('button, select, .vr-key, input')) {
+    return;
+  }
+  
+  const now = performance.now();
+  if (now - lastInputAt < INPUT_COOLDOWN_MS) return;
+  lastInputAt = now;
   
   if (flappyGame) {
     flappyGame.flap();
@@ -404,6 +420,15 @@ function handleInput(e) {
 window.addEventListener('touchstart', handleInput, { passive: false });
 window.addEventListener('mousedown', handleInput);
 window.addEventListener('keydown', handleInput);
+
+// Mobile viewport: lock 100dvh by writing pixel value as fallback for browsers
+// that don't support dvh (and to handle dynamic toolbar resize).
+function setViewportHeight() {
+  document.documentElement.style.setProperty('--vh', window.innerHeight * 0.01 + 'px');
+}
+setViewportHeight();
+window.addEventListener('resize', setViewportHeight);
+window.addEventListener('orientationchange', setViewportHeight);
 
 // Build keyboard on load
 document.addEventListener('DOMContentLoaded', () => {
