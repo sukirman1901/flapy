@@ -2,10 +2,12 @@
 // upfront and switch background/bird sprites without re-fetching.
 const ASSET_BASE = 'https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master';
 
-// Pixel-art heart icon used for the lives HUD. Inline SVG so it scales
-// crisply at any size and respects the currentColor for filled/empty.
-export const HEART_SVG = `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" aria-hidden="true">
-  <path fill="currentColor" d="M2 1h3v1H2zm9 0h3v1h-3zM1 2h2v1H1zm3 0h2v1H4zm5 0h2v1H9zm5 0h1v1h-1zM0 3h2v1H0zm4 0h2v1H4zm6 0h2v1h-2zm4 0h2v1h-2zM0 4h2v1H0zm14 0h2v1h-2zM0 5h2v1H0zm14 0h2v1h-2zM1 6h1v1H1zm13 0h1v1h-1zM2 7h2v1H2zm10 0h2v1h-2zM3 8h2v1H3zm8 0h2v1h-2zM4 9h2v1H4zm6 0h2v1h-2zM5 10h2v1H5zm4 0h2v1H9zM6 11h2v1H6zm2 0h2v1H8zM7 12h2v1H7z"/>
+// Pixel-art heart icon used for the lives HUD. Inline SVG with chunky
+// 8-bit blocks (Zelda-style) — simple shape, crisp at any size.
+export const HEART_SVG = `<svg viewBox="0 0 11 10" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" aria-hidden="true">
+  <path fill="currentColor" d="M2 0h2v1H2zm5 0h2v1H7zM1 1h4v1H1zm5 0h4v1H6zM0 2h11v1H0zM0 3h11v1H0zM0 4h11v1H0zM1 5h9v1H1zM2 6h7v1H2zM3 7h5v1H3zM4 8h3v1H4zM5 9h1v1H5z"/>
+  <path fill="rgba(0,0,0,0.35)" d="M2 0h1v1H2zm5 0h1v1H7zM1 1h1v1H1zm5 0h1v1H6zM0 2h1v3H0zM5 5h1v3H5zM4 8h1v1H4zm-1 0v-1h1v1zm-1 0v-1h1v1zm-1 0v-1h1v1z"/>
+  <path fill="rgba(255,255,255,0.4)" d="M3 1h1v1H3zm5 0h1v1H8zM2 2h1v1H2zm5 0h1v1H7zM1 3h1v1H1z"/>
 </svg>`;
 
 export const SKINS = {
