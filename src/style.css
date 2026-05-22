@@ -39,6 +39,7 @@ body {
 
 .output_canvas {
   position: absolute;
+  /* Default position is top-right; overridden by [data-camera] on body */
   top: 1.5rem;
   right: 1.5rem;
   width: 140px;
@@ -50,6 +51,54 @@ body {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   z-index: 50;
   pointer-events: none; /* Let clicks pass through */
+  transition: top 0.25s ease, right 0.25s ease, bottom 0.25s ease, left 0.25s ease, transform 0.25s ease;
+}
+
+/* Camera positioning variants. Body data attribute is set by JS. */
+body[data-camera="top-right"]    .output_canvas { top: 1.5rem; right: 1.5rem; bottom: auto; left: auto; }
+body[data-camera="top-center"]   .output_canvas { top: 1.5rem; left: 50%; right: auto; bottom: auto; transform: translateX(-50%) scaleX(-1); }
+body[data-camera="top-left"]     .output_canvas { top: 1.5rem; left: 1.5rem; right: auto; bottom: auto; }
+body[data-camera="bottom-right"] .output_canvas { bottom: 1.5rem; right: 1.5rem; top: auto; left: auto; }
+body[data-camera="bottom-left"]  .output_canvas { bottom: 1.5rem; left: 1.5rem; top: auto; right: auto; }
+
+/* When camera is on the left, lives HUD shifts down to clear it */
+body[data-camera="top-left"] .lives-container {
+  top: calc(1.5rem + 140px + 0.75rem);
+}
+body[data-camera="top-left"] .settings-btn,
+body[data-camera="top-left"] .settings-panel {
+  top: 1.5rem; /* free space at top-right when camera is at top-left */
+}
+
+/* When camera is bottom-right, settings can sit at the very top-right */
+body[data-camera="bottom-right"] .settings-btn,
+body[data-camera="bottom-right"] .settings-panel,
+body[data-camera="bottom-left"] .settings-btn,
+body[data-camera="bottom-left"] .settings-panel,
+body[data-camera="top-center"] .settings-btn,
+body[data-camera="top-center"] .settings-panel {
+  top: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  body[data-camera="top-right"]    .output_canvas { top: 0.75rem; right: 0.75rem; }
+  body[data-camera="top-center"]   .output_canvas { top: 0.75rem; left: 50%; transform: translateX(-50%) scaleX(-1); }
+  body[data-camera="top-left"]     .output_canvas { top: 0.75rem; left: 0.75rem; }
+  body[data-camera="bottom-right"] .output_canvas { bottom: 0.75rem; right: 0.75rem; }
+  body[data-camera="bottom-left"]  .output_canvas { bottom: 0.75rem; left: 0.75rem; }
+  body[data-camera="top-left"] .lives-container {
+    top: calc(0.75rem + 80px + 0.5rem);
+  }
+  body[data-camera="top-left"] .settings-btn,
+  body[data-camera="top-left"] .settings-panel,
+  body[data-camera="bottom-right"] .settings-btn,
+  body[data-camera="bottom-right"] .settings-panel,
+  body[data-camera="bottom-left"] .settings-btn,
+  body[data-camera="bottom-left"] .settings-panel,
+  body[data-camera="top-center"] .settings-btn,
+  body[data-camera="top-center"] .settings-panel {
+    top: 0.75rem;
+  }
 }
 
 /* Add a cool skeleton loading animation when waiting for webcam */

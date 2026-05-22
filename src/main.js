@@ -24,13 +24,22 @@ window.playerName = "";
 // Skin selection
 let selectedSkin = 'yellow';
 
-// === Settings (mute, change pilot) ===
+// === Settings (mute, change pilot, camera position) ===
 const SETTINGS_KEY = 'flappySettings';
-let settings = { muted: false };
+const CAMERA_POSITIONS = ['top-right', 'top-center', 'top-left', 'bottom-right', 'bottom-left'];
+const CAMERA_LABELS = {
+  'top-right':    'TOP RIGHT',
+  'top-center':   'TOP CENTER',
+  'top-left':     'TOP LEFT',
+  'bottom-right': 'BOTTOM RIGHT',
+  'bottom-left':  'BOTTOM LEFT'
+};
+let settings = { muted: false, cameraPos: 'top-right' };
 try {
   const raw = localStorage.getItem(SETTINGS_KEY);
   if (raw) settings = { ...settings, ...JSON.parse(raw) };
 } catch (e) {}
+if (!CAMERA_POSITIONS.includes(settings.cameraPos)) settings.cameraPos = 'top-right';
 
 function persistSettings() {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
@@ -42,6 +51,19 @@ function applyMuteToAudio() {
   }
   const stateLabel = document.getElementById('mute-state');
   if (stateLabel) stateLabel.textContent = settings.muted ? 'OFF' : 'ON';
+}
+
+function applyCameraPosition() {
+  document.body.setAttribute('data-camera', settings.cameraPos);
+  const stateLabel = document.getElementById('camera-pos-state');
+  if (stateLabel) stateLabel.textContent = CAMERA_LABELS[settings.cameraPos] || settings.cameraPos;
+}
+
+function cycleCameraPosition() {
+  const idx = CAMERA_POSITIONS.indexOf(settings.cameraPos);
+  settings.cameraPos = CAMERA_POSITIONS[(idx + 1) % CAMERA_POSITIONS.length];
+  persistSettings();
+  applyCameraPosition();
 }
 
 function openSettings() {
@@ -562,6 +584,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   const pilotBtn = document.getElementById('change-pilot-btn');
   if (pilotBtn) pilotBtn.addEventListener('click', goBackToLogin);
+  const camBtn = document.getElementById('camera-pos-btn');
+  if (camBtn) camBtn.addEventListener('click', cycleCameraPosition);
   const closeBtn = document.getElementById('close-settings-btn');
   if (closeBtn) closeBtn.addEventListener('click', closeSettings);
   
@@ -576,6 +600,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     if (progressLabel) progressLabel.textContent = 'CONNECTING TO VR CAMERA...';
     applyMuteToAudio();
+    applyCameraPosition();
   } catch (e) {
     console.error('Asset preload failed:', e);
     if (progressLabel) progressLabel.textContent = 'ASSETS FAILED, CONTINUING...';
