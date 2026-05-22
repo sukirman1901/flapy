@@ -683,19 +683,20 @@ button:active {
 }
 
 .instruction {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  padding: clamp(0.6rem, 2vw, 0.8rem) clamp(1rem, 4vw, 2rem);
-  border-radius: 16px;
-  color: #0f172a;
-  font-weight: 800;
+  background: #ded895;
+  border: 4px solid #543847;
+  border-radius: 4px;
+  padding: clamp(0.7rem, 2.5vw, 1rem) clamp(1rem, 4vw, 1.8rem);
+  color: #ea580c;
+  font-family: 'Press Start 2P', monospace;
+  font-weight: 400;
+  font-size: clamp(0.6rem, 2vw, 0.8rem);
   letter-spacing: 1px;
-  font-size: clamp(0.85rem, 3vw, 1.1rem);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  line-height: 1.6;
+  box-shadow: inset -4px -4px 0 rgba(0,0,0,0.15), 0 6px 0 #543847, 0 8px 32px rgba(0, 0, 0, 0.3);
   text-align: center;
   max-width: 90%;
+  text-shadow: 2px 2px 0 #fff;
 }
 
 @keyframes float {
