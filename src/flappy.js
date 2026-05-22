@@ -333,12 +333,22 @@ export class FlappyBird {
       return false;
     }
     
-    // Respawn: reset bird to mid-air, clear close pipes, grant invuln
-    this.bird.y = this.canvas.height / 2;
+    // Respawn: place the bird at the centre of the next upcoming pipe gap
+    // (not just canvas middle, which often spawns into a wall).
+    const lookahead = this.pipes
+      .filter((p) => p.x + this.pipeWidth > this.bird.x)
+      .sort((a, b) => a.x - b.x)[0];
+    if (lookahead) {
+      this.bird.y = (lookahead.topHeight + lookahead.bottomY) / 2;
+    } else {
+      this.bird.y = this.canvas.height / 2;
+    }
     this.bird.velocity = 0;
     this.bird.rotation = 0;
     this.invulnTimer = 1.5;
-    const safeZone = 250;
+    // Clear pipes that are too close to the respawn point so the player
+    // has time to recover and aim for the next gap.
+    const safeZone = 280;
     this.pipes = this.pipes.filter((p) => {
       const center = p.x + this.pipeWidth / 2;
       return Math.abs(center - this.bird.x) > safeZone;
