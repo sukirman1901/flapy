@@ -54,51 +54,52 @@ body {
   transition: top 0.25s ease, right 0.25s ease, bottom 0.25s ease, left 0.25s ease, transform 0.25s ease;
 }
 
-/* Camera positioning variants. Body data attribute is set by JS. */
-body[data-camera="top-right"]    .output_canvas { top: 1.5rem; right: 1.5rem; bottom: auto; left: auto; }
-body[data-camera="top-center"]   .output_canvas { top: 1.5rem; left: 50%; right: auto; bottom: auto; transform: translateX(-50%) scaleX(-1); }
-body[data-camera="top-left"]     .output_canvas { top: 1.5rem; left: 1.5rem; right: auto; bottom: auto; }
+/* Camera positioning variants. Body data attribute is set by JS.
+   Camera is always BELOW the corresponding HUD element (lives on the
+   left, settings on the right) so it never overlaps. */
+body[data-camera="top-right"] .output_canvas {
+  /* below settings icon (1.5rem + 44px button + 0.5rem gap = ~3rem) */
+  top: calc(1.5rem + 44px + 0.5rem);
+  right: 1.5rem;
+  bottom: auto;
+  left: auto;
+}
+body[data-camera="top-center"] .output_canvas {
+  top: 1.5rem;
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  transform: translateX(-50%) scaleX(-1);
+}
+body[data-camera="top-left"] .output_canvas {
+  /* below lives HUD (about 44px high + padding) */
+  top: calc(1.5rem + 44px + 0.5rem);
+  left: 1.5rem;
+  right: auto;
+  bottom: auto;
+}
 body[data-camera="bottom-right"] .output_canvas { bottom: 1.5rem; right: 1.5rem; top: auto; left: auto; }
 body[data-camera="bottom-left"]  .output_canvas { bottom: 1.5rem; left: 1.5rem; top: auto; right: auto; }
 
-/* When camera is on the left, lives HUD shifts down to clear it */
-body[data-camera="top-left"] .lives-container {
-  top: calc(1.5rem + 140px + 0.75rem);
-}
-body[data-camera="top-left"] .settings-btn,
-body[data-camera="top-left"] .settings-panel {
-  top: 1.5rem; /* free space at top-right when camera is at top-left */
-}
-
-/* When camera is bottom-right, settings can sit at the very top-right */
-body[data-camera="bottom-right"] .settings-btn,
-body[data-camera="bottom-right"] .settings-panel,
-body[data-camera="bottom-left"] .settings-btn,
-body[data-camera="bottom-left"] .settings-panel,
-body[data-camera="top-center"] .settings-btn,
-body[data-camera="top-center"] .settings-panel {
-  top: 1.5rem;
-}
+/* Lives + settings stay anchored at the top so the camera lives below them.
+   No need to shift them based on camera position anymore. */
 
 @media (max-width: 768px) {
-  body[data-camera="top-right"]    .output_canvas { top: 0.75rem; right: 0.75rem; }
-  body[data-camera="top-center"]   .output_canvas { top: 0.75rem; left: 50%; transform: translateX(-50%) scaleX(-1); }
-  body[data-camera="top-left"]     .output_canvas { top: 0.75rem; left: 0.75rem; }
+  body[data-camera="top-right"] .output_canvas {
+    top: calc(0.75rem + 36px + 0.4rem);
+    right: 0.75rem;
+  }
+  body[data-camera="top-center"] .output_canvas {
+    top: 0.75rem;
+    left: 50%;
+    transform: translateX(-50%) scaleX(-1);
+  }
+  body[data-camera="top-left"] .output_canvas {
+    top: calc(0.75rem + 36px + 0.4rem);
+    left: 0.75rem;
+  }
   body[data-camera="bottom-right"] .output_canvas { bottom: 0.75rem; right: 0.75rem; }
   body[data-camera="bottom-left"]  .output_canvas { bottom: 0.75rem; left: 0.75rem; }
-  body[data-camera="top-left"] .lives-container {
-    top: calc(0.75rem + 80px + 0.5rem);
-  }
-  body[data-camera="top-left"] .settings-btn,
-  body[data-camera="top-left"] .settings-panel,
-  body[data-camera="bottom-right"] .settings-btn,
-  body[data-camera="bottom-right"] .settings-panel,
-  body[data-camera="bottom-left"] .settings-btn,
-  body[data-camera="bottom-left"] .settings-panel,
-  body[data-camera="top-center"] .settings-btn,
-  body[data-camera="top-center"] .settings-panel {
-    top: 0.75rem;
-  }
 }
 
 /* Add a cool skeleton loading animation when waiting for webcam */
@@ -821,10 +822,10 @@ button:active {
   z-index: 60;
 }
 
-/* Settings: gear button (top-right under camera circle) + popover */
+/* Settings: gear button (top-right, ABOVE the camera and any other HUD) + popover */
 .settings-btn {
   position: fixed;
-  top: calc(1.5rem + 140px + 0.75rem); /* below the 140px camera circle */
+  top: 1.5rem;
   right: 1.5rem;
   width: 44px;
   height: 44px;
@@ -850,7 +851,7 @@ button:active {
 
 .settings-panel {
   position: fixed;
-  top: calc(1.5rem + 140px + 0.75rem);
+  top: 1.5rem;
   right: calc(1.5rem + 44px + 0.5rem);
   background: #ded895;
   border: 4px solid #543847;
@@ -916,13 +917,13 @@ button:active {
 
 @media (max-width: 768px) {
   .settings-btn {
-    top: calc(0.75rem + 80px + 0.5rem);
+    top: 0.75rem;
     right: 0.75rem;
     width: 36px;
     height: 36px;
   }
   .settings-panel {
-    top: calc(0.75rem + 80px + 0.5rem);
+    top: 0.75rem;
     right: calc(0.75rem + 36px + 0.4rem);
     min-width: 170px;
     padding: 0.6rem;
@@ -933,12 +934,12 @@ button:active {
 
 @media (max-width: 420px) {
   .settings-btn {
-    top: calc(0.75rem + 64px + 0.4rem);
+    top: 0.75rem;
     width: 32px;
     height: 32px;
   }
   .settings-panel {
-    top: calc(0.75rem + 64px + 0.4rem);
+    top: 0.75rem;
     right: 0.75rem;
     left: 0.75rem;
     min-width: 0;
