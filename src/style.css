@@ -311,6 +311,15 @@ button:active {
   transition: opacity 0.3s;
 }
 
+/* When the game UI container is hidden, ensure no descendant captures
+   touches/clicks (panels with pointer-events: auto would otherwise sit
+   invisibly above the login keyboard and skin picker). */
+#game-ui-container.hidden,
+#game-ui-container.hidden #game-start,
+#game-ui-container.hidden #game-over {
+  pointer-events: none !important;
+}
+
 #game-start > *,
 #game-over > * {
   flex-shrink: 0;
