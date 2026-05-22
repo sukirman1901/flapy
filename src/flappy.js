@@ -2,6 +2,12 @@
 // upfront and switch background/bird sprites without re-fetching.
 const ASSET_BASE = 'https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master';
 
+// Pixel-art heart icon used for the lives HUD. Inline SVG so it scales
+// crisply at any size and respects the currentColor for filled/empty.
+export const HEART_SVG = `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" aria-hidden="true">
+  <path fill="currentColor" d="M2 1h3v1H2zm9 0h3v1h-3zM1 2h2v1H1zm3 0h2v1H4zm5 0h2v1H9zm5 0h1v1h-1zM0 3h2v1H0zm4 0h2v1H4zm6 0h2v1h-2zm4 0h2v1h-2zM0 4h2v1H0zm14 0h2v1h-2zM0 5h2v1H0zm14 0h2v1h-2zM1 6h1v1H1zm13 0h1v1h-1zM2 7h2v1H2zm10 0h2v1h-2zM3 8h2v1H3zm8 0h2v1h-2zM4 9h2v1H4zm6 0h2v1h-2zM5 10h2v1H5zm4 0h2v1H9zM6 11h2v1H6zm2 0h2v1H8zM7 12h2v1H7z"/>
+</svg>`;
+
 export const SKINS = {
   yellow: { label: 'CLASSIC', minScore: 0 },
   red:    { label: 'CRIMSON', minScore: 10 },
@@ -248,12 +254,62 @@ export class FlappyBird {
     this.flashDuration = 0;
     this.elapsed = 0; // Game-clock for piranha animation
     
+    // Lives system: each collision costs one heart instead of instant game over
+    this.maxLives = 3;
+    this.lives = this.maxLives;
+    this.invulnTimer = 0;
+    this.updateLivesUI();
+    
     this.score = 0;
     this.flashAlpha = 0;
     
     this.gameState = 'START';
     document.getElementById('game-start').classList.remove('hidden');
     document.getElementById('game-over').classList.add('hidden');
+    const livesEl = document.getElementById('lives-container');
+    if (livesEl) livesEl.classList.remove('hidden');
+  }
+  
+  updateLivesUI() {
+    const container = document.getElementById('lives-container');
+    if (!container) return;
+    container.innerHTML = '';
+    for (let i = 0; i < this.maxLives; i++) {
+      const heart = document.createElement('span');
+      heart.className = 'heart ' + (i < this.lives ? 'filled' : 'empty');
+      heart.innerHTML = HEART_SVG;
+      container.appendChild(heart);
+    }
+  }
+  
+  /**
+   * Take one hit. Returns true if the run continues, false if game over.
+   * On a non-fatal hit we respawn the bird mid-air and clear nearby pipes
+   * so the player is not instantly hit again, plus a short invulnerability.
+   */
+  takeDamage() {
+    if (this.gameState !== 'PLAYING' || this.invulnTimer > 0) return true;
+    this.lives--;
+    this.flashAlpha = 1;
+    this.audio.play('hit');
+    this.updateLivesUI();
+    
+    if (this.lives <= 0) {
+      this.triggerGameOver();
+      return false;
+    }
+    
+    // Respawn: reset bird to mid-air, clear close pipes, grant invuln
+    this.bird.y = this.canvas.height / 2;
+    this.bird.velocity = 0;
+    this.bird.rotation = 0;
+    this.invulnTimer = 1.5;
+    const safeZone = 250;
+    this.pipes = this.pipes.filter((p) => {
+      const center = p.x + this.pipeWidth / 2;
+      return Math.abs(center - this.bird.x) > safeZone;
+    });
+    return true;
   }
 
   flap() {
@@ -300,6 +356,7 @@ export class FlappyBird {
     
     // Game-clock advances during all non-paused states (drives piranha anim)
     this.elapsed += dt;
+    if (this.invulnTimer > 0) this.invulnTimer = Math.max(0, this.invulnTimer - dt);
 
     if (this.gameState === 'START') {
       this.baseX -= this.basePipeSpeed * dt;
@@ -360,10 +417,11 @@ export class FlappyBird {
     let targetRotation = Math.min(Math.PI / 2, Math.max(-Math.PI / 9, (this.bird.velocity * 0.1) * Math.PI / 180));
     this.bird.rotation = targetRotation;
 
-    // Floor & Ceiling collision
+    // Floor & Ceiling collision: instant game over (no respawn from floor)
     const floorY = this.canvas.height - 112; // base height is 112
     if (this.bird.y + this.bird.radius > floorY || this.bird.y - this.bird.radius < 0) {
       this.triggerGameOver();
+      return;
     }
 
     // Generate pipes based on time and speed
@@ -407,7 +465,7 @@ export class FlappyBird {
       const hitBottom = (this.bird.x + this.bird.radius > p.x && this.bird.x - this.bird.radius < p.x + this.pipeWidth && this.bird.y + this.bird.radius > p.bottomY - p.currentPiranhaHeight);
       
       if (hitTop || hitBottom) {
-        this.triggerGameOver();
+        if (!this.takeDamage()) return;
       }
 
       // Score update
@@ -433,6 +491,10 @@ export class FlappyBird {
     this.gameState = 'GAMEOVER';
     this.flashAlpha = 1; // trigger white flash
     this.audio.play('hit');
+    
+    // Hide lives HUD on game over
+    const livesEl = document.getElementById('lives-container');
+    if (livesEl) livesEl.classList.add('hidden');
     
     // Submit score and update leaderboard
     const playerName = window.playerName || 'ANON';
@@ -651,21 +713,24 @@ export class FlappyBird {
       drawX += 336;
     }
 
-    // Draw Bird
-    this.ctx.save();
-    this.ctx.translate(this.bird.x, this.bird.y);
-    this.ctx.rotate(this.bird.rotation);
-    
-    const birdImg = this.birdFrames[this.birdFrameIndex];
-    if (birdImg && birdImg.complete) {
-      this.ctx.drawImage(birdImg, -this.bird.width / 2, -this.bird.height / 2, this.bird.width, this.bird.height);
-    } else {
-      this.ctx.fillStyle = '#eab308';
-      this.ctx.beginPath();
-      this.ctx.arc(0, 0, this.bird.radius, 0, Math.PI * 2);
-      this.ctx.fill();
+    // Draw Bird (skip every other frame while invulnerable for blink effect)
+    const blinkHide = this.invulnTimer > 0 && Math.floor(this.invulnTimer * 12) % 2 === 0;
+    if (!blinkHide) {
+      this.ctx.save();
+      this.ctx.translate(this.bird.x, this.bird.y);
+      this.ctx.rotate(this.bird.rotation);
+      
+      const birdImg = this.birdFrames[this.birdFrameIndex];
+      if (birdImg && birdImg.complete) {
+        this.ctx.drawImage(birdImg, -this.bird.width / 2, -this.bird.height / 2, this.bird.width, this.bird.height);
+      } else {
+        this.ctx.fillStyle = '#eab308';
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, this.bird.radius, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+      this.ctx.restore();
     }
-    this.ctx.restore();
     
     // Draw Screen Flash Effect
     if (this.flashAlpha > 0) {
@@ -673,8 +738,8 @@ export class FlappyBird {
       this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
     
-    // Draw Live Pixel Score (only during PLAYING or GAMEOVER)
-    if (this.gameState === 'PLAYING' || this.gameState === 'GAMEOVER') {
+    // Draw Live Pixel Score (only during PLAYING, not GAMEOVER)
+    if (this.gameState === 'PLAYING' || this.gameState === 'PAUSED') {
       const scoreStr = this.score.toString();
       const numWidth = 24 * 1.5; // Scale by 1.5
       const numHeight = 36 * 1.5;
