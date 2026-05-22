@@ -18,6 +18,16 @@
         <button id="skip-vr-btn" class="retro-button" style="margin-top: 2rem;">SKIP VR (PLAY WITH MOUSE)</button>
       </div>
       
+      <div id="calibration-screen" class="retro-screen hidden">
+        <h2 class="retro-title">CALIBRATE PINCH</h2>
+        <img src="https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master/sprites/yellowbird-midflap.png" alt="Bird" class="loading-bird pixel-art" style="margin-bottom: 1.5rem;">
+        <p id="calibration-instruction" class="retro-text" style="text-align: center; padding: 0 2rem; line-height: 1.6;">PINCH THUMB &amp; INDEX<br>HOLD FOR 2 SECONDS</p>
+        <div id="calibration-bar-container" style="width: 60%; max-width: 400px; height: 24px; background: #543847; border: 4px solid #fff; margin-top: 2rem; box-shadow: inset -4px -4px 0 rgba(0,0,0,0.3);">
+          <div id="calibration-bar" style="width: 0%; height: 100%; background: #ea580c; transition: width 0.1s linear;"></div>
+        </div>
+        <button id="skip-calibration-btn" class="retro-button" style="margin-top: 2rem;">SKIP (USE DEFAULT)</button>
+      </div>
+      
       <div id="login-screen" class="retro-screen hidden">
         <h2 class="retro-title">ENTER PILOT NAME</h2>
         <div id="name-display" class="retro-input"></div>
@@ -57,6 +67,12 @@
       
       <!-- Flappy Bird Game Canvas -->
       <canvas id="gameCanvas" class="hidden" width="800" height="600"></canvas>
+      
+      <!-- Pause Overlay (auto-shown when hand leaves frame) -->
+      <div id="pause-overlay" class="retro-screen hidden pause-overlay">
+        <h2 class="retro-title blink">PAUSED</h2>
+        <p class="retro-text" style="text-align: center; padding: 0 2rem;">RAISE HAND TO RESUME</p>
+      </div>
 
       <div class="glass-panel floating-controls">
         <select id="cameraSelect" class="camera-select skeleton" disabled>

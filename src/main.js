@@ -21,6 +21,17 @@ let vrCursor = null;
 // Player Identity
 window.playerName = "";
 
+// Pinch calibration (defaults overwritten after calibration)
+const DEFAULT_PINCH = 0.05;
+const DEFAULT_RELEASE = 0.065;
+let pinchThreshold = DEFAULT_PINCH;
+let releaseThreshold = DEFAULT_RELEASE;
+let calibrationDone = false;
+
+// Auto-pause tracking
+let lastHandSeenAt = performance.now();
+const HAND_LOST_GRACE_MS = 500;
+
 // Build VR Keyboard
 function buildVirtualKeyboard() {
   const keyboardContainer = document.getElementById('vr-keyboard');
@@ -75,6 +86,76 @@ function handleVirtualKeyClick(key) {
   }
   
   nameDisplay.innerText = window.playerName + (Math.floor(Date.now() / 500) % 2 === 0 ? '_' : '');
+}
+
+// === Pinch Calibration ===
+// Captures the user's natural pinch distance over a 2 second hold
+// and derives thresholds with a comfortable buffer.
+const calibration = {
+  active: false,
+  startedAt: 0,
+  samples: [],
+  HOLD_MS: 2000
+};
+
+function beginCalibration() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('calibration-screen').classList.remove('hidden');
+  calibration.active = true;
+  calibration.startedAt = 0;
+  calibration.samples = [];
+}
+
+function finishCalibration(useDefaults) {
+  calibration.active = false;
+  calibrationDone = true;
+  
+  if (!useDefaults && calibration.samples.length > 5) {
+    // Use median sample as the pinch baseline (robust to outliers)
+    const sorted = [...calibration.samples].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    // Pinch fires anything <= median * 1.4, release at * 1.9 (hysteresis)
+    pinchThreshold = Math.max(0.02, median * 1.4);
+    releaseThreshold = pinchThreshold * 1.35;
+  } else {
+    pinchThreshold = DEFAULT_PINCH;
+    releaseThreshold = DEFAULT_RELEASE;
+  }
+  
+  document.getElementById('calibration-screen').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+
+function updateCalibration(pinchDist) {
+  if (!calibration.active) return;
+  
+  const bar = document.getElementById('calibration-bar');
+  const instr = document.getElementById('calibration-instruction');
+  
+  // Pinch is considered "holding" if distance is below a generous default
+  const HOLDING = pinchDist < 0.08;
+  
+  if (HOLDING) {
+    if (calibration.startedAt === 0) {
+      calibration.startedAt = performance.now();
+      calibration.samples = [];
+    }
+    calibration.samples.push(pinchDist);
+    
+    const elapsed = performance.now() - calibration.startedAt;
+    const pct = Math.min(100, (elapsed / calibration.HOLD_MS) * 100);
+    if (bar) bar.style.width = pct + '%';
+    if (instr) instr.innerHTML = 'HOLD STEADY...<br>' + Math.ceil((calibration.HOLD_MS - elapsed) / 1000) + 's';
+    
+    if (elapsed >= calibration.HOLD_MS) {
+      finishCalibration(false);
+    }
+  } else {
+    // Reset progress if user releases too early
+    calibration.startedAt = 0;
+    if (bar) bar.style.width = '0%';
+    if (instr) instr.innerHTML = 'PINCH THUMB &amp; INDEX<br>HOLD FOR 2 SECONDS';
+  }
 }
 
 // Blinking cursor loop for name display
@@ -256,14 +337,35 @@ async function predictWebcam() {
     const loadingScreen = document.getElementById('loading-screen');
     if (loadingScreen) loadingScreen.classList.add('hidden');
     
-    // Show login screen if game hasn't started and login is hidden
+    // First-time entry: route to calibration before login
+    const calibrationScreen = document.getElementById('calibration-screen');
     const loginScreen = document.getElementById('login-screen');
     const gameCanvas = document.getElementById('gameCanvas');
-    if (gameCanvas.classList.contains('hidden') && loginScreen.classList.contains('hidden')) {
+    if (
+      gameCanvas.classList.contains('hidden') &&
+      loginScreen.classList.contains('hidden') &&
+      calibrationScreen.classList.contains('hidden') &&
+      !calibrationDone
+    ) {
+      // Kick off calibration flow
+      beginCalibration();
+    } else if (
+      gameCanvas.classList.contains('hidden') &&
+      loginScreen.classList.contains('hidden') &&
+      calibrationScreen.classList.contains('hidden') &&
+      calibrationDone
+    ) {
       loginScreen.classList.remove('hidden');
     }
     
     if (results.landmarks && results.landmarks.length > 0) {
+      lastHandSeenAt = performance.now();
+      
+      // Auto-resume if game was paused due to lost hand
+      if (flappyGame && flappyGame.gameState === 'PAUSED') {
+        flappyGame.resume();
+      }
+      
       const firstHand = results.landmarks[0];
       const thumbTip = firstHand[4];
       const indexTip = firstHand[8];
@@ -274,6 +376,11 @@ async function predictWebcam() {
         thumbTip.y - indexTip.y, 
         (thumbTip.z || 0) - (indexTip.z || 0)
       );
+      
+      // Feed calibration if it's running
+      if (calibration.active) {
+        updateCalibration(pinchDist);
+      }
       
       // VR Spatial Cursor Mapping
       // X is mirrored: (1 - x)
@@ -286,10 +393,6 @@ async function predictWebcam() {
         vrCursor.style.left = `${screenX}px`;
         vrCursor.style.top = `${screenY}px`;
       }
-      
-      // Threshold for pinch detection
-      const pinchThreshold = 0.05; // Safe pinch distance
-      const releaseThreshold = 0.065; // Easier to release
       
       const now = Date.now();
       window.lastPinchTime = window.lastPinchTime || 0;
@@ -306,8 +409,9 @@ async function predictWebcam() {
           if (elementToClick && (elementToClick.tagName === 'BUTTON' || elementToClick.tagName === 'SELECT' || elementToClick.classList.contains('vr-key'))) {
             // Click HTML buttons (like the Keyboard or Skip VR)
             elementToClick.click();
-          } else {
-            // Otherwise, anywhere else acts as a screen tap for the game!
+          } else if (!calibration.active) {
+            // Otherwise, anywhere else acts as a screen tap for the game
+            // (suppress flap input while calibrating)
             if (flappyGame) flappyGame.flap();
           }
         }
@@ -335,6 +439,19 @@ async function predictWebcam() {
           radius: 4
         });
       }
+    } else {
+      // No hand detected this frame
+      const elapsedSinceHand = performance.now() - lastHandSeenAt;
+      if (
+        flappyGame &&
+        flappyGame.gameState === 'PLAYING' &&
+        elapsedSinceHand > HAND_LOST_GRACE_MS
+      ) {
+        flappyGame.pause();
+      }
+      // Hide cursor when no hand
+      const vrCursor = document.getElementById('vr-cursor');
+      if (vrCursor) vrCursor.style.display = 'none';
     }
     canvasCtx.restore();
   }
@@ -367,11 +484,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const skipBtn = document.getElementById('skip-vr-btn');
   if (skipBtn) {
     skipBtn.addEventListener('click', () => {
-      // Hide loading screen, show login screen
+      // Hide loading screen, skip calibration, go to login
       document.getElementById('loading-screen').classList.add('hidden');
+      calibrationDone = true;
       document.getElementById('login-screen').classList.remove('hidden');
       // Stop camera attempt if any
       if (typeof stopCamera === 'function') stopCamera();
+    });
+  }
+  
+  // Skip Calibration Button: use defaults
+  const skipCalBtn = document.getElementById('skip-calibration-btn');
+  if (skipCalBtn) {
+    skipCalBtn.addEventListener('click', () => {
+      finishCalibration(true);
     });
   }
 });

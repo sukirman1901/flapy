@@ -129,6 +129,7 @@ export class FlappyBird {
   }
 
   flap() {
+    if (this.gameState === 'PAUSED') return; // ignore taps while paused
     if (this.gameState === 'START') {
       this.gameState = 'PLAYING';
       document.getElementById('game-start').classList.add('hidden');
@@ -143,11 +144,30 @@ export class FlappyBird {
     this.audio.play('wing');
   }
 
+  pause() {
+    if (this.gameState !== 'PLAYING') return;
+    this.gameState = 'PAUSED';
+    const overlay = document.getElementById('pause-overlay');
+    if (overlay) overlay.classList.remove('hidden');
+  }
+
+  resume() {
+    if (this.gameState !== 'PAUSED') return;
+    this.gameState = 'PLAYING';
+    const overlay = document.getElementById('pause-overlay');
+    if (overlay) overlay.classList.add('hidden');
+  }
+
   update(dt) {
     // Decrease flash alpha
     if (this.flashAlpha > 0) {
       this.flashAlpha -= dt * 2; // Fade out flash
       if (this.flashAlpha < 0) this.flashAlpha = 0;
+    }
+
+    // Frozen state: render only, no physics
+    if (this.gameState === 'PAUSED') {
+      return;
     }
 
     if (this.gameState === 'START') {
