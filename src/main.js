@@ -304,14 +304,6 @@ async function predictWebcam() {
         (thumbTip.z || 0) - (indexTip.z || 0)
       );
       
-      // Live debug HUD — shows pinch distance vs threshold
-      const hud = document.getElementById('pinch-hud');
-      if (hud) {
-        const close = pinchDist < pinchThreshold;
-        hud.textContent = `PINCH: ${pinchDist.toFixed(3)} / ${pinchThreshold.toFixed(3)}`;
-        hud.style.color = close ? '#22c55e' : '#f8fafc';
-      }
-      
       // VR Spatial Cursor Mapping
       // X is mirrored: (1 - x)
       const screenX = (1 - indexTip.x) * window.innerWidth;

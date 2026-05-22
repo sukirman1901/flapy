@@ -199,12 +199,6 @@ button:active {
   .skip-vr-btn {
     width: min(220px, 70vw);
   }
-  
-  /* Pinch HUD: nudge below the camera circle on mobile */
-  #pinch-hud {
-    top: auto;
-    bottom: 5rem;
-  }
 }
 
 /* Small phones: tighten everything more */
@@ -664,26 +658,6 @@ button:active {
   background: #ea580c;
   border-color: #ffffff;
   box-shadow: 0 0 20px rgba(234, 88, 12, 1);
-}
-
-/* Live pinch HUD: shows current pinch distance vs threshold */
-#pinch-hud {
-  position: fixed;
-  top: 0.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: 'Press Start 2P', monospace;
-  font-size: clamp(0.55rem, 1.8vw, 0.8rem);
-  color: #f8fafc;
-  background: rgba(0, 0, 0, 0.55);
-  padding: 0.4rem 0.8rem;
-  border-radius: 6px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  z-index: 9998;
-  pointer-events: none;
-  letter-spacing: 1px;
-  white-space: nowrap;
-  max-width: calc(100vw - 2rem);
 }
 
 /* Pause overlay sits above game canvas with dim backdrop */
