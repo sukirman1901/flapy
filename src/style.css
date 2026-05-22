@@ -778,48 +778,51 @@ button:active {
   top: 1.5rem;
   left: 1.5rem;
   display: flex;
-  gap: 0.4rem;
+  gap: 0.5rem;
   z-index: 55;
   pointer-events: none;
 }
 
-.heart {
-  width: clamp(26px, 5.5vw, 36px);
-  height: clamp(26px, 5.5vw, 36px);
-  display: inline-block;
-  filter: drop-shadow(2px 2px 0 #543847);
-  transition: transform 0.2s ease, color 0.2s ease;
+.life {
+  width: clamp(32px, 6.5vw, 44px);
+  height: clamp(32px, 6.5vw, 44px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.heart svg {
+.life-img {
   width: 100%;
   height: 100%;
-  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  filter: drop-shadow(2px 2px 0 #543847);
 }
 
-.heart.filled {
-  color: #ef4444;
-  animation: heartbeat 1.4s ease-in-out infinite;
+.life.filled {
+  animation: bird-bob 1.2s ease-in-out infinite;
 }
 
-.heart.empty {
-  color: rgba(60, 60, 60, 0.45);
-  filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.4));
+.life.empty {
+  opacity: 0.35;
   transform: scale(0.85);
 }
 
-@keyframes heartbeat {
-  0%, 100% { transform: scale(1); }
-  20%      { transform: scale(1.12); }
-  40%      { transform: scale(1); }
-  60%      { transform: scale(1.08); }
+.life.empty .life-img {
+  filter: grayscale(1) brightness(0.7) drop-shadow(2px 2px 0 rgba(0,0,0,0.4));
+}
+
+@keyframes bird-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
 }
 
 @media (max-width: 768px) {
   .lives-container {
     top: 0.75rem;
     left: 0.75rem;
-    gap: 0.3rem;
+    gap: 0.35rem;
   }
 }
 

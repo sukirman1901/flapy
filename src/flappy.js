@@ -297,11 +297,22 @@ export class FlappyBird {
     const container = document.getElementById('lives-container');
     if (!container) return;
     container.innerHTML = '';
+    // Use the bird's mid-flap sprite as the life icon — matches the
+    // selected skin (yellow/red/blue) and keeps the visual language
+    // consistent with the rest of the game.
+    const lifeSprite = this.birdFrames && this.birdFrames[1];
     for (let i = 0; i < this.maxLives; i++) {
-      const heart = document.createElement('span');
-      heart.className = 'heart ' + (i < this.lives ? 'filled' : 'empty');
-      heart.innerHTML = HEART_SVG;
-      container.appendChild(heart);
+      const slot = document.createElement('span');
+      const filled = i < this.lives;
+      slot.className = 'life ' + (filled ? 'filled' : 'empty');
+      if (lifeSprite && lifeSprite.src) {
+        const img = document.createElement('img');
+        img.src = lifeSprite.src;
+        img.alt = filled ? 'Life' : 'Lost life';
+        img.className = 'life-img';
+        slot.appendChild(img);
+      }
+      container.appendChild(slot);
     }
   }
   
