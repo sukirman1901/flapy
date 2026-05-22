@@ -785,7 +785,7 @@ button:active {
 
 .life {
   /* Match flappy bird sprite aspect ratio (34:24 ≈ 1.42:1) */
-  width: clamp(40px, 8vw, 56px);
+  width: clamp(28px, 5.5vw, 50px);
   height: auto;
   display: inline-flex;
   align-items: center;
@@ -824,7 +824,22 @@ button:active {
   .lives-container {
     top: 0.75rem;
     left: 0.75rem;
-    gap: 0.35rem;
+    gap: 0.25rem;
+  }
+  .life {
+    width: clamp(24px, 6vw, 32px);
+  }
+}
+
+@media (max-width: 420px) {
+  .lives-container {
+    gap: 0.2rem;
+  }
+  .life {
+    width: 22px;
+  }
+  .life-img {
+    filter: drop-shadow(1px 1px 0 #543847);
   }
 }
 
