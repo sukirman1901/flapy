@@ -18,13 +18,17 @@
       <!-- OS UI Screens -->
       <div id="loading-screen" class="retro-screen">
         <img src="https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master/sprites/yellowbird-midflap.png" alt="Loading Bird" class="loading-bird pixel-art">
-        <p class="retro-text blink">CONNECTING TO VR CAMERA...</p>
+        <p id="asset-progress-label" class="retro-text">LOADING ASSETS 0%</p>
+        <div id="asset-progress-bar">
+          <div id="asset-progress-fill"></div>
+        </div>
         <button id="skip-vr-btn" class="retro-button skip-vr-btn" style="margin-top: 2rem;">SKIP VR</button>
       </div>
       
       <div id="login-screen" class="retro-screen hidden">
         <h2 class="retro-title">ENTER PILOT NAME</h2>
         <div id="name-display" class="retro-input"></div>
+        <div id="skin-picker" class="skin-picker"></div>
         <div id="vr-keyboard" class="keyboard-container">
           <!-- Keyboard keys will be injected here by JS -->
         </div>

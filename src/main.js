@@ -4,7 +4,7 @@ import {
   FilesetResolver,
   DrawingUtils
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0";
-import { FlappyBird } from './flappy.js';
+import { FlappyBird, preloadAssets, SKINS } from './flappy.js';
 
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
@@ -17,9 +17,30 @@ let lastVideoTime = -1;
 let flappyGame = undefined;
 let isPinching = false;
 let vrCursor = null;
+let gameAssets = null;
 
 // Player Identity
 window.playerName = "";
+
+// Skin selection
+let selectedSkin = 'yellow';
+
+function getBestScore() {
+  const saved = localStorage.getItem('flappyHighScoreObj');
+  if (saved) {
+    try {
+      return JSON.parse(saved).score || 0;
+    } catch (e) {
+      return parseInt(saved) || 0;
+    }
+  }
+  const old = localStorage.getItem('flappyHighScore');
+  return old ? parseInt(old) || 0 : 0;
+}
+
+function isSkinUnlocked(skinKey) {
+  return getBestScore() >= SKINS[skinKey].minScore;
+}
 
 // Pinch thresholds (slightly more forgiving than the original 0.05/0.065)
 const DEFAULT_PINCH = 0.07;
@@ -69,16 +90,7 @@ function handleVirtualKeyClick(key) {
     window.playerName = window.playerName.slice(0, -1);
   } else if (key === 'ENTER') {
     if (window.playerName.trim().length > 0) {
-      document.getElementById('login-screen').classList.add('hidden');
-      
-      // Start Game Flow
-      const gameCanvas = document.getElementById('gameCanvas');
-      gameCanvas.classList.remove('hidden');
-      document.getElementById('game-ui-container').classList.remove('hidden');
-      
-      if (!flappyGame) {
-        flappyGame = new FlappyBird(gameCanvas);
-      }
+      startGame();
     }
   } else {
     if (window.playerName.length < 10) {
@@ -87,6 +99,53 @@ function handleVirtualKeyClick(key) {
   }
   
   nameDisplay.innerText = window.playerName + (Math.floor(Date.now() / 500) % 2 === 0 ? '_' : '');
+}
+
+function startGame() {
+  document.getElementById('login-screen').classList.add('hidden');
+  
+  const gameCanvas = document.getElementById('gameCanvas');
+  gameCanvas.classList.remove('hidden');
+  document.getElementById('game-ui-container').classList.remove('hidden');
+  
+  if (!flappyGame) {
+    flappyGame = new FlappyBird(gameCanvas, gameAssets, { skin: selectedSkin });
+  } else {
+    flappyGame.setSkin(selectedSkin);
+  }
+}
+
+// Build skin picker on login screen. Locked skins show a padlock and a hint.
+function buildSkinPicker() {
+  const container = document.getElementById('skin-picker');
+  if (!container) return;
+  container.innerHTML = '';
+  
+  Object.entries(SKINS).forEach(([key, info]) => {
+    const unlocked = isSkinUnlocked(key);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'skin-option' + (selectedSkin === key ? ' selected' : '') + (unlocked ? '' : ' locked');
+    btn.disabled = !unlocked;
+    btn.dataset.skin = key;
+    
+    const previewKey = key + 'Mid';
+    const previewSrc = gameAssets && gameAssets.images[previewKey] ? gameAssets.images[previewKey].src : '';
+    
+    btn.innerHTML = `
+      <img src="${previewSrc}" alt="${info.label}" class="pixel-art skin-preview">
+      <span class="skin-label">${info.label}</span>
+      <span class="skin-meta">${unlocked ? 'READY' : 'BEST ' + info.minScore}</span>
+    `;
+    
+    btn.addEventListener('click', () => {
+      if (!unlocked) return;
+      selectedSkin = key;
+      buildSkinPicker(); // re-render selection state
+    });
+    
+    container.appendChild(btn);
+  });
 }
 
 // === Pinch Calibration removed ===
@@ -283,6 +342,7 @@ async function predictWebcam() {
       loginScreen.classList.contains('hidden')
     ) {
       loginScreen.classList.remove('hidden');
+      buildSkinPicker();
     }
     
     if (results.landmarks && results.landmarks.length > 0) {
@@ -423,7 +483,7 @@ window.addEventListener('resize', setViewportHeight);
 window.addEventListener('orientationchange', setViewportHeight);
 
 // Build keyboard on load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   buildVirtualKeyboard();
   
   // Skip VR Button Logic
@@ -433,9 +493,25 @@ document.addEventListener('DOMContentLoaded', () => {
       // Hide loading screen, go to login
       document.getElementById('loading-screen').classList.add('hidden');
       document.getElementById('login-screen').classList.remove('hidden');
+      buildSkinPicker();
       // Stop camera attempt if any
       if (typeof stopCamera === 'function') stopCamera();
     });
+  }
+  
+  // Preload all sprite + audio assets with progress feedback
+  const progressFill = document.getElementById('asset-progress-fill');
+  const progressLabel = document.getElementById('asset-progress-label');
+  try {
+    gameAssets = await preloadAssets((p) => {
+      const pct = Math.round(p * 100);
+      if (progressFill) progressFill.style.width = pct + '%';
+      if (progressLabel) progressLabel.textContent = `LOADING ASSETS ${pct}%`;
+    });
+    if (progressLabel) progressLabel.textContent = 'CONNECTING TO VR CAMERA...';
+  } catch (e) {
+    console.error('Asset preload failed:', e);
+    if (progressLabel) progressLabel.textContent = 'ASSETS FAILED, CONTINUING...';
   }
 });
 

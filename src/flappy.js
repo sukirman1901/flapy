@@ -1,3 +1,75 @@
+// Static asset manifest. Centralised so we can preload everything
+// upfront and switch background/bird sprites without re-fetching.
+const ASSET_BASE = 'https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master';
+
+export const SKINS = {
+  yellow: { label: 'CLASSIC', minScore: 0 },
+  red:    { label: 'CRIMSON', minScore: 10 },
+  blue:   { label: 'AZURE',   minScore: 20 }
+};
+
+// Returns a promise that resolves once an Image has loaded (or errored).
+function loadImage(url) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(img); // resolve anyway so one bad URL doesn't block
+    img.src = url;
+  });
+}
+
+// Preload every sprite + audio buffer with a progress callback.
+// onProgress receives a value 0..1.
+export async function preloadAssets(onProgress) {
+  const imageUrls = {
+    base:        `${ASSET_BASE}/sprites/base.png`,
+    pipeGreen:   `${ASSET_BASE}/sprites/pipe-green.png`,
+    bgDay:       `${ASSET_BASE}/sprites/background-day.png`,
+    bgNight:     `${ASSET_BASE}/sprites/background-night.png`,
+    yellowDown:  `${ASSET_BASE}/sprites/yellowbird-downflap.png`,
+    yellowMid:   `${ASSET_BASE}/sprites/yellowbird-midflap.png`,
+    yellowUp:    `${ASSET_BASE}/sprites/yellowbird-upflap.png`,
+    redDown:     `${ASSET_BASE}/sprites/redbird-downflap.png`,
+    redMid:      `${ASSET_BASE}/sprites/redbird-midflap.png`,
+    redUp:       `${ASSET_BASE}/sprites/redbird-upflap.png`,
+    blueDown:    `${ASSET_BASE}/sprites/bluebird-downflap.png`,
+    blueMid:     `${ASSET_BASE}/sprites/bluebird-midflap.png`,
+    blueUp:      `${ASSET_BASE}/sprites/bluebird-upflap.png`,
+  };
+  for (let i = 0; i <= 9; i++) {
+    imageUrls['num' + i] = `${ASSET_BASE}/sprites/${i}.png`;
+  }
+  
+  const audioUrls = {
+    wing:  `${ASSET_BASE}/audio/wing.wav`,
+    point: `${ASSET_BASE}/audio/point.wav`,
+    hit:   `${ASSET_BASE}/audio/hit.wav`
+  };
+  
+  const audio = new AudioManager();
+  const totalAssets =
+    Object.keys(imageUrls).length + Object.keys(audioUrls).length;
+  let loaded = 0;
+  const tick = () => {
+    loaded++;
+    if (onProgress) onProgress(loaded / totalAssets);
+  };
+  
+  const images = {};
+  const imagePromises = Object.entries(imageUrls).map(async ([key, url]) => {
+    images[key] = await loadImage(url);
+    tick();
+  });
+  
+  const audioPromises = Object.entries(audioUrls).map(async ([key, url]) => {
+    await audio.loadSound(key, url);
+    tick();
+  });
+  
+  await Promise.all([...imagePromises, ...audioPromises]);
+  return { images, audio };
+}
+
 export class AudioManager {
   constructor() {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -37,53 +109,64 @@ export class AudioManager {
 }
 
 export class FlappyBird {
-  constructor(canvas) {
+  /**
+   * @param {HTMLCanvasElement} canvas
+   * @param {{ images: Record<string, HTMLImageElement>, audio: AudioManager }} assets
+   * @param {{ skin?: string }} [opts]
+   */
+  constructor(canvas, assets, opts = {}) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
+    this.assets = assets;
+    this.audio = assets.audio;
     
-    // Load Bird Sprites (Animation Frames)
-    this.birdFrames = [];
-    const frameUrls = [
-      'https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master/sprites/yellowbird-downflap.png',
-      'https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master/sprites/yellowbird-midflap.png',
-      'https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master/sprites/yellowbird-upflap.png'
-    ];
-    frameUrls.forEach(url => {
-      const img = new Image();
-      img.src = url;
-      this.birdFrames.push(img);
-    });
+    this.skin = opts.skin && SKINS[opts.skin] ? opts.skin : 'yellow';
+    this.applySkin();
+    
+    // Static sprites
+    this.baseImg = assets.images.base;
+    this.pipeImg = assets.images.pipeGreen;
+    this.bgDayImg = assets.images.bgDay;
+    this.bgNightImg = assets.images.bgNight;
+    
+    // Number sprites for live score
+    this.numImgs = [];
+    for (let i = 0; i <= 9; i++) {
+      this.numImgs.push(assets.images['num' + i]);
+    }
+    
     this.birdFrameIndex = 0;
     this.birdAnimationTimer = 0;
-    
-    // Load Base (Ground) Sprite
-    this.baseImg = new Image();
-    this.baseImg.src = 'https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master/sprites/base.png';
     this.baseX = 0;
-    
-    // Flash effect
     this.flashAlpha = 0;
-    
-    // Load Pipe Sprite
-    this.pipeImg = new Image();
-    this.pipeImg.src = 'https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master/sprites/pipe-green.png';
-    
-    // Load Sounds using Web Audio API for zero latency
-    this.audio = new AudioManager();
-    this.audio.loadSound('wing', 'https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master/audio/wing.wav');
-    this.audio.loadSound('point', 'https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master/audio/point.wav');
-    this.audio.loadSound('hit', 'https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master/audio/hit.wav');
     
     // Resize
     this.resize();
     this.resize();
-    window.addEventListener('resize', () => this.resize());
+    this._resizeHandler = () => this.resize();
+    window.addEventListener('resize', this._resizeHandler);
     
     this.lastTime = performance.now();
     this.reset();
     
     // Start loop
     requestAnimationFrame((time) => this.gameLoop(time));
+  }
+  
+  applySkin() {
+    const map = {
+      yellow: ['yellowDown', 'yellowMid', 'yellowUp'],
+      red:    ['redDown',    'redMid',    'redUp'],
+      blue:   ['blueDown',   'blueMid',   'blueUp']
+    };
+    const keys = map[this.skin] || map.yellow;
+    this.birdFrames = keys.map(k => this.assets.images[k]);
+  }
+  
+  setSkin(skin) {
+    if (!SKINS[skin]) return;
+    this.skin = skin;
+    this.applySkin();
   }
 
   resize() {
@@ -111,14 +194,7 @@ export class FlappyBird {
     this.basePipeSpeed = 220;
     this.pipeSpawnTimer = 0;
     this.flashDuration = 0;
-    
-    // Load Number Sprites for Live Score
-    this.numImgs = [];
-    for (let i = 0; i <= 9; i++) {
-      const img = new Image();
-      img.src = `https://raw.githubusercontent.com/samuelcust/flappy-bird-assets/master/sprites/${i}.png`;
-      this.numImgs.push(img);
-    }
+    this.elapsed = 0; // Game-clock for piranha animation
     
     this.score = 0;
     this.flashAlpha = 0;
@@ -169,6 +245,9 @@ export class FlappyBird {
     if (this.gameState === 'PAUSED') {
       return;
     }
+    
+    // Game-clock advances during all non-paused states (drives piranha anim)
+    this.elapsed += dt;
 
     if (this.gameState === 'START') {
       this.baseX -= this.basePipeSpeed * dt;
@@ -262,10 +341,10 @@ export class FlappyBird {
       let p = this.pipes[i];
       p.x -= currentSpeed * dt;
 
-      // Update piranha offset
+      // Update piranha offset using game-clock (resilient to tab suspension)
       if (p.hasPiranha) {
         // progress goes from 0 to 1 and back to 0
-        const progress = (Math.sin(Date.now() / 300 + p.piranhaOffset) + 1) / 2;
+        const progress = (Math.sin(this.elapsed * 3.33 + p.piranhaOffset) + 1) / 2;
         p.currentPiranhaHeight = progress * 60; // Max 60px out of pipe
       } else {
         p.currentPiranhaHeight = 0;
@@ -354,8 +433,30 @@ export class FlappyBird {
     }
   }
 
+  // Background flips to night every 10 score for variety
+  isNight() {
+    return Math.floor(this.score / 10) % 2 === 1;
+  }
+  
   draw() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    // Draw Background (cover-fit, scrolls with no parallax)
+    const bg = this.isNight() ? this.bgNightImg : this.bgDayImg;
+    if (bg && bg.complete && bg.naturalWidth !== 0) {
+      // Tile horizontally to cover any aspect ratio
+      const ratio = bg.naturalHeight / bg.naturalWidth;
+      const drawH = this.canvas.height;
+      const drawW = drawH / ratio;
+      let bx = 0;
+      while (bx < this.canvas.width) {
+        this.ctx.drawImage(bg, bx, 0, drawW, drawH);
+        bx += drawW;
+      }
+    } else {
+      this.ctx.fillStyle = this.isNight() ? '#1a1a3e' : '#4ec0ca';
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
     
     // Draw Pipes
     this.ctx.fillStyle = '#22c55e'; // Fallback if image fails
@@ -385,7 +486,7 @@ export class FlappyBird {
           this.ctx.translate(px, py);
           
           // Rotate head up/down slightly based on animation
-          this.ctx.rotate(Math.sin(Date.now() / 200) * 0.1);
+          this.ctx.rotate(Math.sin(this.elapsed * 5) * 0.1);
           
           // Draw Stem
           this.ctx.fillStyle = '#000000';
@@ -413,7 +514,7 @@ export class FlappyBird {
           this.ctx.fillRect(-3*pSize, -5*pSize, 2*pSize, 2*pSize);
           
           // Mouth Animation
-          const mouthOpen = (Math.sin(Date.now() / 150) + 1) / 2;
+          const mouthOpen = (Math.sin(this.elapsed * 6.67) + 1) / 2;
           const openAmount = Math.floor(mouthOpen * 7); // 0 to 6 pixels
           
           if (openAmount > 0) {
