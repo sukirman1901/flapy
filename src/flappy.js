@@ -70,6 +70,58 @@ export async function preloadAssets(onProgress) {
   return { images, audio };
 }
 
+// === Leaderboard helpers ===
+// Stored as { entries: [{ name, score, ts }] } sorted desc.
+// Backed by localStorage today; abstracted so it can be swapped for an online
+// store later without touching the game class.
+const LEADERBOARD_KEY = 'flappyLeaderboardV1';
+const LEADERBOARD_MAX = 10;
+
+export function getLeaderboard() {
+  try {
+    const raw = localStorage.getItem(LEADERBOARD_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.entries)) return data.entries;
+    }
+  } catch (e) {
+    // ignore parse errors
+  }
+  // Migrate from legacy single-score record
+  const legacy = localStorage.getItem('flappyHighScoreObj');
+  if (legacy) {
+    try {
+      const d = JSON.parse(legacy);
+      if (d && d.score) {
+        return [{ name: d.name || 'ANON', score: d.score, ts: Date.now() }];
+      }
+    } catch (e) {}
+  }
+  return [];
+}
+
+export function submitScore(name, score) {
+  const entries = getLeaderboard();
+  entries.push({
+    name: (name || 'ANON').slice(0, 10).toUpperCase(),
+    score: score | 0,
+    ts: Date.now()
+  });
+  entries.sort((a, b) => b.score - a.score || a.ts - b.ts);
+  const trimmed = entries.slice(0, LEADERBOARD_MAX);
+  localStorage.setItem(LEADERBOARD_KEY, JSON.stringify({ entries: trimmed }));
+  // Find rank of the just-added entry (1-based, -1 if not in top 10)
+  const rank = trimmed.findIndex(
+    (e) => e.name === (name || 'ANON').slice(0, 10).toUpperCase() && e.score === (score | 0)
+  );
+  return { entries: trimmed, rank: rank === -1 ? -1 : rank + 1 };
+}
+
+export function getBestScore() {
+  const entries = getLeaderboard();
+  return entries.length ? entries[0].score : 0;
+}
+
 export class AudioManager {
   constructor() {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -382,43 +434,24 @@ export class FlappyBird {
     this.flashAlpha = 1; // trigger white flash
     this.audio.play('hit');
     
-    // Check High Score
-    this.highScore = 0;
-    this.highScoreHolder = "";
-    const savedData = localStorage.getItem('flappyHighScoreObj');
-    if (savedData) {
-      try {
-        const data = JSON.parse(savedData);
-        this.highScore = data.score || 0;
-        this.highScoreHolder = data.name || "";
-      } catch (e) {
-        // Fallback for old integer scores
-        this.highScore = parseInt(savedData) || 0;
-      }
-    } else {
-      // Very old fallback
-      const oldScore = localStorage.getItem('flappyHighScore');
-      if (oldScore) this.highScore = parseInt(oldScore) || 0;
-    }
-    if (this.score > this.highScore) {
-      this.highScore = this.score;
-      const playerName = window.playerName || "ANON";
-      this.highScoreHolder = playerName;
-      localStorage.setItem('flappyHighScoreObj', JSON.stringify({ name: playerName, score: this.highScore }));
-    }
+    // Submit score and update leaderboard
+    const playerName = window.playerName || 'ANON';
+    const submission = submitScore(playerName, this.score);
+    const top = submission.entries;
+    const best = top.length ? top[0] : null;
     
     // Update UI
     document.getElementById('game-start').classList.add('hidden');
     const gameOverUI = document.getElementById('game-over');
-    if(gameOverUI) {
+    if (gameOverUI) {
       gameOverUI.classList.remove('hidden');
       document.getElementById('final-score').innerText = this.score;
       
       const bestDisplay = document.getElementById('best-score');
-      if (this.highScoreHolder) {
-        bestDisplay.innerText = `${this.highScore} (${this.highScoreHolder.slice(0, 4)})`;
+      if (best) {
+        bestDisplay.innerText = `${best.score} (${best.name.slice(0, 4)})`;
       } else {
-        bestDisplay.innerText = this.highScore;
+        bestDisplay.innerText = '0';
       }
       
       // Medal Logic (Using Emoji since asset repository lacks medal images)
@@ -430,6 +463,45 @@ export class FlappyBird {
       else medalIcon.innerText = ''; // No medal
       
       medalIcon.style.display = this.score >= 10 ? 'block' : 'none';
+      
+      // Render leaderboard list with current player highlighted
+      const board = document.getElementById('leaderboard-list');
+      if (board) {
+        board.innerHTML = '';
+        if (top.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'leaderboard-empty';
+          empty.innerText = 'NO SCORES YET';
+          board.appendChild(empty);
+        } else {
+          top.forEach((entry, idx) => {
+            const row = document.createElement('div');
+            row.className = 'leaderboard-row';
+            const isMe = (idx + 1) === submission.rank;
+            if (isMe) row.classList.add('is-me');
+            row.innerHTML = `
+              <span class="lb-rank">${idx + 1}</span>
+              <span class="lb-name">${entry.name}</span>
+              <span class="lb-score">${entry.score}</span>
+            `;
+            board.appendChild(row);
+          });
+        }
+      }
+      
+      // Show rank message
+      const rankMsg = document.getElementById('rank-message');
+      if (rankMsg) {
+        if (submission.rank === 1) {
+          rankMsg.innerText = 'NEW BEST!';
+          rankMsg.style.display = 'block';
+        } else if (submission.rank > 0) {
+          rankMsg.innerText = `RANK #${submission.rank}`;
+          rankMsg.style.display = 'block';
+        } else {
+          rankMsg.style.display = 'none';
+        }
+      }
     }
   }
 

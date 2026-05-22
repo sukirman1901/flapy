@@ -291,12 +291,30 @@ button:active {
 
 .game-ui {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   pointer-events: none;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+#game-start,
+#game-over {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s;
+  max-width: 100%;
+  margin: auto;
 }
 
 .score-board {
@@ -500,6 +518,93 @@ button:active {
   transition: opacity 0.3s;
 }
 
+/* Leaderboard panel on game over screen */
+.rank-message {
+  font-family: 'Press Start 2P', monospace;
+  color: #fff;
+  background: #ea580c;
+  border: 4px solid #fff;
+  padding: 0.5rem 1rem;
+  font-size: clamp(0.7rem, 2.5vw, 1rem);
+  letter-spacing: 2px;
+  margin-bottom: 0.75rem;
+  text-shadow: 2px 2px 0 #9a3412;
+  box-shadow: 0 4px 0 #9a3412;
+}
+
+.leaderboard {
+  background: #ded895;
+  border: 4px solid #543847;
+  padding: 0.75rem 1rem;
+  width: clamp(240px, 80vw, 320px);
+  margin-bottom: 1rem;
+  box-shadow: inset -4px -4px 0 rgba(0,0,0,0.15), 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.leaderboard-title {
+  font-family: 'Press Start 2P', monospace;
+  color: #ea580c;
+  font-size: clamp(0.7rem, 2vw, 0.85rem);
+  letter-spacing: 2px;
+  text-align: center;
+  margin-bottom: 0.6rem;
+  text-shadow: 2px 2px 0 #fff;
+}
+
+.leaderboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.3rem 0.5rem;
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(0.55rem, 1.7vw, 0.7rem);
+  color: #543847;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 2px;
+}
+
+.leaderboard-row.is-me {
+  background: #ea580c;
+  color: #fff;
+  text-shadow: 1px 1px 0 #9a3412;
+}
+
+.lb-rank {
+  text-align: right;
+  opacity: 0.85;
+}
+
+.lb-name {
+  text-align: left;
+  letter-spacing: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lb-score {
+  text-align: right;
+  font-weight: bold;
+}
+
+.leaderboard-empty {
+  text-align: center;
+  color: #543847;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.7rem;
+  padding: 1rem;
+  opacity: 0.6;
+}
+
 .pixel-art {
   width: clamp(180px, 45vw, 280px);
   height: auto;
@@ -511,9 +616,9 @@ button:active {
 }
 
 #game-over .pixel-art {
-  width: clamp(180px, 42vw, 260px);
+  width: clamp(150px, 32vw, 220px);
   animation: none;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .score-panel {

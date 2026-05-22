@@ -4,7 +4,7 @@ import {
   FilesetResolver,
   DrawingUtils
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0";
-import { FlappyBird, preloadAssets, SKINS } from './flappy.js';
+import { FlappyBird, preloadAssets, SKINS, getBestScore } from './flappy.js';
 
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
@@ -24,19 +24,6 @@ window.playerName = "";
 
 // Skin selection
 let selectedSkin = 'yellow';
-
-function getBestScore() {
-  const saved = localStorage.getItem('flappyHighScoreObj');
-  if (saved) {
-    try {
-      return JSON.parse(saved).score || 0;
-    } catch (e) {
-      return parseInt(saved) || 0;
-    }
-  }
-  const old = localStorage.getItem('flappyHighScore');
-  return old ? parseInt(old) || 0 : 0;
-}
 
 function isSkinUnlocked(skinKey) {
   return getBestScore() >= SKINS[skinKey].minScore;
