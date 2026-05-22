@@ -727,10 +727,26 @@ button:active {
 
 .panel-number {
   color: #fff;
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   font-weight: 800;
   font-family: 'Press Start 2P', monospace;
   text-shadow: 2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000;
+  text-align: right;
+  display: block;
+  width: 100%;
+  line-height: 1;
+}
+
+.panel-holder {
+  color: #543847;
+  font-size: 0.55rem;
+  font-family: 'Press Start 2P', monospace;
+  letter-spacing: 1px;
+  text-align: right;
+  display: block;
+  width: 100%;
+  margin-top: 0.3rem;
+  text-shadow: 1px 1px 0 #fff;
 }
 
 .instruction {

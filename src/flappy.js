@@ -619,10 +619,13 @@ export class FlappyBird {
       document.getElementById('final-score').innerText = this.score;
       
       const bestDisplay = document.getElementById('best-score');
+      const bestHolder = document.getElementById('best-holder');
       if (best) {
-        bestDisplay.innerText = `${best.score} (${best.name.slice(0, 4)})`;
+        bestDisplay.innerText = String(best.score);
+        if (bestHolder) bestHolder.innerText = best.name ? `(${best.name.slice(0, 6)})` : '';
       } else {
         bestDisplay.innerText = '0';
+        if (bestHolder) bestHolder.innerText = '';
       }
       
       // Medal Logic (Using Emoji since asset repository lacks medal images)
