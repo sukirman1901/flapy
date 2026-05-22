@@ -772,6 +772,130 @@ button:active {
   z-index: 60;
 }
 
+/* Settings: gear button (top-right under camera circle) + popover */
+.settings-btn {
+  position: fixed;
+  top: calc(1.5rem + 140px + 0.75rem); /* below the 140px camera circle */
+  right: 1.5rem;
+  width: 44px;
+  height: 44px;
+  background: #ded895;
+  border: 4px solid #543847;
+  border-radius: 4px;
+  box-shadow: 0 4px 0 #543847, 0 6px 12px rgba(0,0,0,0.3);
+  color: #543847;
+  cursor: pointer;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform 0.1s;
+}
+
+.settings-btn:hover { background: #f3eea8; }
+.settings-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #543847, 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.settings-panel {
+  position: fixed;
+  top: calc(1.5rem + 140px + 0.75rem);
+  right: calc(1.5rem + 44px + 0.5rem);
+  background: #ded895;
+  border: 4px solid #543847;
+  border-radius: 4px;
+  box-shadow: inset -4px -4px 0 rgba(0,0,0,0.15), 0 6px 0 #543847, 0 8px 24px rgba(0,0,0,0.4);
+  padding: 0.75rem;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 200px;
+  font-family: 'Press Start 2P', monospace;
+  transition: opacity 0.15s, transform 0.15s;
+  transform-origin: top right;
+}
+
+.settings-panel.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.95);
+}
+
+.settings-title {
+  font-size: 0.75rem;
+  color: #ea580c;
+  text-shadow: 2px 2px 0 #fff;
+  text-align: center;
+  letter-spacing: 2px;
+  margin: 0.2rem 0 0.4rem;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border: 3px solid #543847;
+  border-radius: 3px;
+  padding: 0.55rem 0.75rem;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.7rem;
+  color: #543847;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  letter-spacing: 1px;
+  transition: transform 0.05s, background 0.1s;
+}
+
+.settings-row:hover { background: #fffbe0; }
+.settings-row:active { transform: translateY(2px); }
+
+.settings-value { color: #ea580c; font-weight: bold; }
+
+.settings-close {
+  background: #ea580c;
+  color: #fff;
+  text-align: center;
+  justify-content: center;
+  margin-top: 0.2rem;
+}
+.settings-close:hover { background: #f97316; }
+
+@media (max-width: 768px) {
+  .settings-btn {
+    top: calc(0.75rem + 80px + 0.5rem);
+    right: 0.75rem;
+    width: 36px;
+    height: 36px;
+  }
+  .settings-panel {
+    top: calc(0.75rem + 80px + 0.5rem);
+    right: calc(0.75rem + 36px + 0.4rem);
+    min-width: 170px;
+    padding: 0.6rem;
+  }
+  .settings-row { font-size: 0.6rem; padding: 0.5rem 0.6rem; }
+  .settings-title { font-size: 0.65rem; }
+}
+
+@media (max-width: 420px) {
+  .settings-btn {
+    top: calc(0.75rem + 64px + 0.4rem);
+    width: 32px;
+    height: 32px;
+  }
+  .settings-panel {
+    top: calc(0.75rem + 64px + 0.4rem);
+    right: 0.75rem;
+    left: 0.75rem;
+    min-width: 0;
+  }
+}
+
 /* Lives HUD: top-left, padding matches camera circle (1.5rem / 0.75rem mobile) */
 .lives-container {
   position: fixed;

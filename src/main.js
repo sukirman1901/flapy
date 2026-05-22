@@ -3,7 +3,7 @@ import {
   HandLandmarker,
   FilesetResolver,
   DrawingUtils
-} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0";
+} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35";
 import { FlappyBird, preloadAssets, SKINS, getBestScore } from './flappy.js';
 
 const video = document.getElementById("webcam");
@@ -16,7 +16,6 @@ let webcamRunning = false;
 let lastVideoTime = -1;
 let flappyGame = undefined;
 let isPinching = false;
-let vrCursor = null;
 let gameAssets = null;
 
 // Player Identity
@@ -25,17 +24,59 @@ window.playerName = "";
 // Skin selection
 let selectedSkin = 'yellow';
 
+// === Settings (mute, change pilot) ===
+const SETTINGS_KEY = 'flappySettings';
+let settings = { muted: false };
+try {
+  const raw = localStorage.getItem(SETTINGS_KEY);
+  if (raw) settings = { ...settings, ...JSON.parse(raw) };
+} catch (e) {}
+
+function persistSettings() {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
+}
+
+function applyMuteToAudio() {
+  if (gameAssets && gameAssets.audio && typeof gameAssets.audio.setMuted === 'function') {
+    gameAssets.audio.setMuted(settings.muted);
+  }
+  const stateLabel = document.getElementById('mute-state');
+  if (stateLabel) stateLabel.textContent = settings.muted ? 'OFF' : 'ON';
+}
+
+function openSettings() {
+  document.getElementById('settings-panel').classList.remove('hidden');
+  applyMuteToAudio();
+}
+
+function closeSettings() {
+  document.getElementById('settings-panel').classList.add('hidden');
+}
+
+function goBackToLogin() {
+  // Pause current game if running, then surface the login screen
+  if (flappyGame && flappyGame.gameState === 'PLAYING') {
+    flappyGame.pause();
+  }
+  closeSettings();
+  document.getElementById('game-ui-container').classList.add('hidden');
+  document.getElementById('gameCanvas').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  buildSkinPicker();
+  // Reset name buffer so user can type fresh
+  window.playerName = '';
+  const display = document.getElementById('name-display');
+  if (display) display.innerText = '';
+}
+
 function isSkinUnlocked(skinKey) {
   return getBestScore() >= SKINS[skinKey].minScore;
 }
 
 // Pinch thresholds (slightly more forgiving than the original 0.05/0.065)
-const DEFAULT_PINCH = 0.07;
-const DEFAULT_RELEASE = 0.08;  // Small hysteresis gap so fast taps register cleanly
+const PINCH_THRESHOLD = 0.07;
+const RELEASE_THRESHOLD = 0.08;  // Small hysteresis gap so fast taps register cleanly
 const PINCH_DEBOUNCE_MS = 120; // Max ~8 pinches/sec for late-game speed
-let pinchThreshold = DEFAULT_PINCH;
-let releaseThreshold = DEFAULT_RELEASE;
-let calibrationDone = true; // calibration removed; flag kept for routing
 
 // Auto-pause tracking
 let lastHandSeenAt = performance.now();
@@ -148,12 +189,8 @@ function buildSkinPicker() {
   });
 }
 
-// === Pinch Calibration removed ===
-// Calibration ended up making the game harder because users pinch tighter
-// during a deliberate hold than during gameplay. We now use a fixed,
-// forgiving threshold and expose a live debug HUD so the player can see
-// exactly how close their pinch is to triggering.
-const calibration = { active: false }; // stub kept so existing checks still pass
+// Calibration was removed in an earlier iteration; the constants above
+// are now the only thresholds used.
 
 // Blinking cursor loop for name display
 setInterval(() => {
@@ -166,7 +203,7 @@ setInterval(() => {
 // Initialize MediaPipe HandLandmarker
 const createHandLandmarker = async () => {
   const vision = await FilesetResolver.forVisionTasks(
-    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm"
   );
   handLandmarker = await HandLandmarker.createFromOptions(vision, {
     baseOptions: {
@@ -379,7 +416,7 @@ async function predictWebcam() {
       const now = Date.now();
       window.lastPinchTime = window.lastPinchTime || 0;
       
-      if (pinchDist < pinchThreshold) {
+      if (pinchDist < PINCH_THRESHOLD) {
         if (!isPinching && (now - window.lastPinchTime > PINCH_DEBOUNCE_MS)) {
           isPinching = true;
           window.lastPinchTime = now;
@@ -396,7 +433,7 @@ async function predictWebcam() {
             if (flappyGame) flappyGame.flap();
           }
         }
-      } else if (pinchDist > releaseThreshold) {
+      } else if (pinchDist > RELEASE_THRESHOLD) {
         isPinching = false;
         if (vrCursor) vrCursor.classList.remove('pinching');
       }
@@ -499,6 +536,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
   
+  // Settings panel wiring
+  const settingsBtn = document.getElementById('settings-btn');
+  const settingsPanel = document.getElementById('settings-panel');
+  if (settingsBtn && settingsPanel) {
+    settingsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (settingsPanel.classList.contains('hidden')) openSettings();
+      else closeSettings();
+    });
+    document.addEventListener('click', (e) => {
+      if (settingsPanel.classList.contains('hidden')) return;
+      if (!settingsPanel.contains(e.target) && e.target !== settingsBtn && !settingsBtn.contains(e.target)) {
+        closeSettings();
+      }
+    });
+  }
+  const muteBtn = document.getElementById('toggle-mute-btn');
+  if (muteBtn) {
+    muteBtn.addEventListener('click', () => {
+      settings.muted = !settings.muted;
+      persistSettings();
+      applyMuteToAudio();
+    });
+  }
+  const pilotBtn = document.getElementById('change-pilot-btn');
+  if (pilotBtn) pilotBtn.addEventListener('click', goBackToLogin);
+  const closeBtn = document.getElementById('close-settings-btn');
+  if (closeBtn) closeBtn.addEventListener('click', closeSettings);
+  
   // Preload all sprite + audio assets with progress feedback
   const progressFill = document.getElementById('asset-progress-fill');
   const progressLabel = document.getElementById('asset-progress-label');
@@ -509,6 +575,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (progressLabel) progressLabel.textContent = `LOADING ASSETS ${pct}%`;
     });
     if (progressLabel) progressLabel.textContent = 'CONNECTING TO VR CAMERA...';
+    applyMuteToAudio();
   } catch (e) {
     console.error('Asset preload failed:', e);
     if (progressLabel) progressLabel.textContent = 'ASSETS FAILED, CONTINUING...';

@@ -156,6 +156,7 @@ export class AudioManager {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     this.ctx = new AudioContext();
     this.buffers = {};
+    this.muted = false;
   }
 
   async loadSound(name, url) {
@@ -170,6 +171,7 @@ export class AudioManager {
   }
 
   play(name, volume = 0.5) {
+    if (this.muted) return;
     if (!this.buffers[name]) return;
     
     // Resume context if suspended (browser policy)
@@ -186,6 +188,10 @@ export class AudioManager {
     source.connect(gainNode);
     gainNode.connect(this.ctx.destination);
     source.start(0);
+  }
+  
+  setMuted(m) {
+    this.muted = !!m;
   }
 }
 
@@ -277,6 +283,13 @@ export class FlappyBird {
     this.flashDuration = 0;
     this.elapsed = 0; // Game-clock for piranha animation
     
+    // Combo: counts consecutive pipes passed without taking damage.
+    // Resets on hit. Triggers visual celebrations at milestones.
+    this.streak = 0;
+    this.streakBest = 0;
+    this.streakToast = null; // { text, ttl } for floating notifications
+    this.particles = [];     // pixel particles spawned on pipe pass
+    
     // Lives system: each collision costs one heart instead of instant game over
     this.maxLives = 3;
     this.lives = this.maxLives;
@@ -327,6 +340,9 @@ export class FlappyBird {
     this.flashAlpha = 1;
     this.audio.play('hit');
     this.updateLivesUI();
+    
+    // Streak resets on damage
+    this.streak = 0;
     
     if (this.lives <= 0) {
       this.triggerGameOver();
@@ -401,6 +417,25 @@ export class FlappyBird {
     // Game-clock advances during all non-paused states (drives piranha anim)
     this.elapsed += dt;
     if (this.invulnTimer > 0) this.invulnTimer = Math.max(0, this.invulnTimer - dt);
+    
+    // Tick streak toast and particles independent of state machine branches
+    if (this.streakToast) {
+      this.streakToast.ttl -= dt;
+      if (this.streakToast.ttl <= 0) this.streakToast = null;
+    }
+    if (this.particles.length) {
+      for (let i = this.particles.length - 1; i >= 0; i--) {
+        const pt = this.particles[i];
+        pt.life -= dt;
+        if (pt.life <= 0) {
+          this.particles.splice(i, 1);
+          continue;
+        }
+        pt.x += pt.vx * dt;
+        pt.y += pt.vy * dt;
+        pt.vy += 120 * dt; // light gravity for that sparkle-falling feel
+      }
+    }
 
     if (this.gameState === 'START') {
       this.baseX -= this.basePipeSpeed * dt;
@@ -523,6 +558,30 @@ export class FlappyBird {
         this.score++;
         p.passed = true;
         this.audio.play('point');
+        
+        // Streak tracking + celebration milestones
+        this.streak++;
+        if (this.streak > this.streakBest) this.streakBest = this.streak;
+        if (this.streak === 5 || this.streak === 10 || (this.streak > 10 && this.streak % 10 === 0)) {
+          this.streakToast = {
+            text: `STREAK x${this.streak}!`,
+            ttl: 1.4 // seconds visible
+          };
+        }
+        
+        // Sparkle particles at the pipe gap centre
+        const gapY = (p.topHeight + p.bottomY) / 2;
+        const gapX = p.x + this.pipeWidth / 2;
+        for (let s = 0; s < 8; s++) {
+          this.particles.push({
+            x: gapX,
+            y: gapY + (Math.random() - 0.5) * 60,
+            vx: (Math.random() - 0.5) * 80,
+            vy: (Math.random() - 0.5) * 80,
+            life: 0.6,
+            color: this.streak >= 10 ? '#fbbf24' : '#f8fafc'
+          });
+        }
       }
 
       // Remove off-screen pipes
@@ -804,6 +863,35 @@ export class FlappyBird {
           this.ctx.drawImage(img, startX + (i * numWidth), startY, numWidth, numHeight);
         }
       }
+    }
+    
+    // Draw streak particles (above bird, below toast)
+    this.particles.forEach((pt) => {
+      const alpha = Math.min(1, pt.life / 0.6);
+      this.ctx.fillStyle = pt.color;
+      this.ctx.globalAlpha = alpha;
+      this.ctx.fillRect(pt.x | 0, pt.y | 0, 4, 4);
+    });
+    this.ctx.globalAlpha = 1;
+    
+    // Draw streak toast (centred, fades + drifts up)
+    if (this.streakToast) {
+      const t = this.streakToast.ttl / 1.4;
+      const alpha = t > 0.7 ? (1 - t) / 0.3 : Math.min(1, t / 0.3);
+      const lift = (1 - t) * 30;
+      this.ctx.save();
+      this.ctx.globalAlpha = alpha;
+      this.ctx.fillStyle = '#ea580c';
+      this.ctx.strokeStyle = '#fff';
+      this.ctx.lineWidth = 6;
+      this.ctx.font = 'bold 36px "Press Start 2P", monospace';
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'middle';
+      const cx = this.canvas.width / 2;
+      const cy = this.canvas.height / 2 - 60 - lift;
+      this.ctx.strokeText(this.streakToast.text, cx, cy);
+      this.ctx.fillText(this.streakToast.text, cx, cy);
+      this.ctx.restore();
     }
   }
 
